@@ -1,0 +1,21 @@
+CREATE TABLE `companies` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`name` text NOT NULL,
+	`city` text NOT NULL,
+	`address` text DEFAULT '' NOT NULL,
+	`distance` real DEFAULT 0 NOT NULL,
+	`industry` text DEFAULT 'Sonstige' NOT NULL,
+	`employees` text DEFAULT '' NOT NULL,
+	`phone` text DEFAULT '' NOT NULL,
+	`email` text DEFAULT '' NOT NULL,
+	`website` text DEFAULT '' NOT NULL,
+	`manager` text DEFAULT '' NOT NULL,
+	`stage` text DEFAULT 'Neu gefunden' NOT NULL,
+	`priority` text DEFAULT 'B' NOT NULL,
+	`owner` text DEFAULT 'Ivan' NOT NULL,
+	`next_action` text DEFAULT '' NOT NULL,
+	`next_date` text DEFAULT '' NOT NULL,
+	`source` text DEFAULT 'Manuell' NOT NULL,
+	`notes` text DEFAULT '' NOT NULL,
+	`created_at` text DEFAULT 'CURRENT_TIMESTAMP' NOT NULL
+);
