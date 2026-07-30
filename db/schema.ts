@@ -10,7 +10,9 @@ export const companies = sqliteTable("companies", {
   priority: text("priority").notNull().default("B"), owner: text("owner").notNull().default("Ivan"),
   nextAction: text("next_action").notNull().default(""), nextDate: text("next_date").notNull().default(""),
   source: text("source").notNull().default("Manuell"), notes: text("notes").notNull().default(""),
-  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP")
+  notionPageId: text("notion_page_id"), notionSyncedAt: text("notion_synced_at"), notionSyncError: text("notion_sync_error"),
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
+  updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP")
 });
 
 export const researchJobs = sqliteTable("research_jobs", {
@@ -24,4 +26,15 @@ export const researchJobs = sqliteTable("research_jobs", {
   status: text("status").notNull().default("Datenquelle ausstehend"),
   provider: text("provider").notNull().default("Nicht verbunden"),
   createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP")
+});
+
+export const notionSyncRuns = sqliteTable("notion_sync_runs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  status: text("status").notNull(),
+  processed: integer("processed").notNull().default(0),
+  succeeded: integer("succeeded").notNull().default(0),
+  failed: integer("failed").notNull().default(0),
+  message: text("message").notNull().default(""),
+  startedAt: text("started_at").notNull(),
+  finishedAt: text("finished_at")
 });

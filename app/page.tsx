@@ -7,6 +7,7 @@ type Company = {
   industry: string; employees: string; phone: string; email: string; website: string;
   manager: string; stage: string; priority: string; owner: string; nextAction: string;
   nextDate: string; source: string; notes: string;
+  notionPageId?: string | null; notionSyncedAt?: string | null; notionSyncError?: string | null;
 };
 
 type EventItem = { id: number; title: string; date: string; location: string; capacity: number; invited: number; confirmed: number; attended: number };
@@ -53,10 +54,14 @@ export default function Home() {
   const [showResearch, setShowResearch] = useState(false);
   const [researching, setResearching] = useState(false);
   const [lastResearch, setLastResearch] = useState<ResearchJob | null>(null);
+  const [notionSyncing, setNotionSyncing] = useState(false);
+  const [notionConfigured, setNotionConfigured] = useState(false);
+  const [notionPending, setNotionPending] = useState(0);
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
     fetch("/api/companies").then(r => r.ok ? r.json() : Promise.reject()).then(d => d.companies?.length && setCompanies(d.companies)).catch(() => {});
+    fetch("/api/sync/notion").then(r => r.ok ? r.json() : Promise.reject()).then(d => { setNotionConfigured(Boolean(d.configured)); setNotionPending(Number(d.pending || 0)); }).catch(() => {});
   }, []);
 
   const withinRadius = useMemo(() => companies.filter(c => c.distance <= radius), [companies, radius]);
@@ -72,7 +77,7 @@ export default function Home() {
     const updated = { ...company, stage };
     setCompanies(old => old.map(c => c.id === company.id ? updated : c));
     setSelected(updated);
-    fetch(`/api/companies/${company.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stage }) }).catch(() => {});
+    fetch(`/api/companies/${company.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stage }) }).then(r => r.ok && notionConfigured ? fetch("/api/sync/notion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId: company.id }) }) : null).catch(() => {});
     setNotice(`${company.name}: Status auf „${stageShort[stage]}“ gesetzt`);
     setTimeout(() => setNotice(""), 2800);
   }
@@ -82,8 +87,21 @@ export default function Home() {
     const data = new FormData(e.currentTarget);
     const next: Company = { id: Date.now(), name: String(data.get("name")), city: String(data.get("city")), address: String(data.get("address")), distance: Number(data.get("distance")), industry: String(data.get("industry")), employees: String(data.get("employees")), phone: String(data.get("phone")), email: String(data.get("email")), website: String(data.get("website")), manager: String(data.get("manager")), stage: "Neu gefunden", priority: "B", owner: "Ivan", nextAction: "Daten prüfen und qualifizieren", nextDate: "2026-07-28", source: "Manuell", notes: "" };
     setCompanies(old => [next, ...old]); setShowAdd(false); setNotice("Unternehmen wurde angelegt");
-    try { const r = await fetch("/api/companies", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(next) }); if (r.ok) { const d = await r.json(); setCompanies(old => old.map(c => c.id === next.id ? d.company : c)); } } catch {}
+    try { const r = await fetch("/api/companies", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(next) }); if (r.ok) { const d = await r.json(); setCompanies(old => old.map(c => c.id === next.id ? d.company : c)); if (notionConfigured) fetch("/api/sync/notion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId: d.company.id }) }).catch(()=>{}); } } catch {}
     setTimeout(() => setNotice(""), 2800);
+  }
+
+  async function syncNotion() {
+    setNotionSyncing(true);
+    try {
+      const response = await fetch("/api/sync/notion", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      const result = await response.json() as { message?: string; configured?: boolean; succeeded?: number };
+      setNotionConfigured(Boolean(result.configured));
+      if (!response.ok) throw new Error(result.message || "Notion-Synchronisation fehlgeschlagen");
+      setNotionPending(old => Math.max(0, old - Number(result.succeeded || 0)));
+      setNotice(result.message || "Notion wurde synchronisiert");
+    } catch (error) { setNotice(error instanceof Error ? error.message : "Notion-Synchronisation fehlgeschlagen"); }
+    finally { setNotionSyncing(false); setTimeout(() => setNotice(""), 4500); }
   }
 
   async function startResearch(e: FormEvent<HTMLFormElement>) {
@@ -122,12 +140,12 @@ export default function Home() {
       <nav aria-label="Hauptnavigation">
         {["Übersicht", "Unternehmen", "Sales Funnel", "Aufgaben", "Veranstaltungen"].map((item, i) => <button key={item} className={view === item ? "active" : ""} onClick={() => setView(item)}><span>{["⌂", "▦", "▽", "✓", "◇"][i]}</span>{item}{item === "Aufgaben" && <em>4</em>}</button>)}
       </nav>
-      <div className="sidebar-foot"><div className="sync-dot" /> <div><strong>Synchronisiert</strong><small>Zuletzt gerade eben</small></div></div>
+      <div className="sidebar-foot"><div className={notionConfigured ? "sync-dot" : "sync-dot waiting"} /> <div><strong>{notionConfigured ? "CRM-Cloud aktiv" : "Notion vorbereitet"}</strong><small>{notionConfigured ? `${notionPending} Notion-Updates offen` : "Zugang noch schützen"}</small></div></div>
       <div className="user"><span>IK</span><div><strong>Ivan K.</strong><small>Akquisition</small></div><b>⋯</b></div>
     </aside>
 
     <main>
-      <header className="topbar"><div><span className="live-dot" /> Expansion Nürnberg · Pilotphase</div><div className="top-actions"><button aria-label="Benachrichtigungen">♢<i /></button><span className="avatar">JK</span></div></header>
+      <header className="topbar"><div><span className="live-dot" /> Expansion Nürnberg · Pilotphase</div><div className="top-actions"><button className="notion-sync" onClick={syncNotion} disabled={notionSyncing}>{notionSyncing ? "Notion wird aktualisiert …" : "↻ Mit Notion synchronisieren"}</button><button aria-label="Benachrichtigungen">♢<i /></button><span className="avatar">JK</span></div></header>
 
       <section className="content">
         {view === "Übersicht" && <>

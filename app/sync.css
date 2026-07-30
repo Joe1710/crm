@@ -1,0 +1,24 @@
+.sync-dot.waiting {
+  background: #f3a43e;
+  box-shadow: 0 0 0 4px #f3a43e20;
+}
+
+.top-actions .notion-sync {
+  border: 1px solid #d9e2f7;
+  background: #f4f7fd;
+  color: #315da9;
+  border-radius: 7px;
+  padding: 8px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.top-actions .notion-sync:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+@media (max-width: 760px) {
+  .top-actions .notion-sync { display: none; }
+}
