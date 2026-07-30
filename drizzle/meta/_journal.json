@@ -8,6 +8,13 @@
       "when": 1784669631077,
       "tag": "0000_dark_goblin_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1785393268741,
+      "tag": "0001_salty_yellow_claw",
+      "breakpoints": true
     }
   ]
 }

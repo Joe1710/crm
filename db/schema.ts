@@ -12,3 +12,16 @@ export const companies = sqliteTable("companies", {
   source: text("source").notNull().default("Manuell"), notes: text("notes").notNull().default(""),
   createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP")
 });
+
+export const researchJobs = sqliteTable("research_jobs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  industry: text("industry").notNull(),
+  radius: integer("radius").notNull(),
+  employees: text("employees").notNull(),
+  legalForm: text("legal_form").notNull().default("Alle Rechtsformen"),
+  region: text("region").notNull().default("Nürnberg, Fürth und Erlangen"),
+  resultLimit: integer("result_limit").notNull().default(10),
+  status: text("status").notNull().default("Datenquelle ausstehend"),
+  provider: text("provider").notNull().default("Nicht verbunden"),
+  createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP")
+});

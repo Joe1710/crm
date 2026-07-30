@@ -10,6 +10,7 @@ type Company = {
 };
 
 type EventItem = { id: number; title: string; date: string; location: string; capacity: number; invited: number; confirmed: number; attended: number };
+type ResearchJob = { id: number; industry: string; radius: number; employees: string; legalForm: string; region: string; status: string };
 
 const stages = ["Neu gefunden", "Qualifiziert", "Kontakt vorgesehen", "Kontakt aufgenommen", "Gespräch geführt", "Interesse", "Unterlagen versendet", "Veranstaltung zugesagt", "Teilgenommen", "Angebot erstellt", "Auftrag abgeschlossen"];
 
@@ -49,6 +50,9 @@ export default function Home() {
   const [industry, setIndustry] = useState("Alle Branchen");
   const [selected, setSelected] = useState<Company | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [showResearch, setShowResearch] = useState(false);
+  const [researching, setResearching] = useState(false);
+  const [lastResearch, setLastResearch] = useState<ResearchJob | null>(null);
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
@@ -82,6 +86,30 @@ export default function Home() {
     setTimeout(() => setNotice(""), 2800);
   }
 
+  async function startResearch(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setResearching(true);
+    const data = new FormData(e.currentTarget);
+    const criteria = {
+      industry: String(data.get("industry")), radius: Number(data.get("radius")),
+      employees: String(data.get("employees")), legalForm: String(data.get("legalForm")),
+      region: String(data.get("region")), limit: 10
+    };
+    try {
+      const response = await fetch("/api/research", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(criteria) });
+      const result = await response.json() as { job?: ResearchJob; companies?: Company[]; message?: string };
+      if (!response.ok) throw new Error(result.message || "Recherche konnte nicht gestartet werden");
+      if (result.companies?.length) setCompanies(old => [...result.companies!, ...old]);
+      if (result.job) setLastResearch(result.job);
+      setShowResearch(false);
+      setNotice(result.companies?.length ? `${result.companies.length} neue Unternehmen wurden gespeichert` : "Rechercheauftrag gespeichert – Datenquelle wird verbunden");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Recherche konnte nicht gestartet werden");
+    } finally {
+      setResearching(false); setTimeout(() => setNotice(""), 4200);
+    }
+  }
+
   function exportCsv() {
     const rows = [["Unternehmen", "Ort", "Branche", "Geschäftsführung", "Telefon", "E-Mail", "Entfernung", "Status"], ...filtered.map(c => [c.name, c.city, c.industry, c.manager, c.phone, c.email, String(c.distance), c.stage])];
     const blob = new Blob(["\ufeff" + rows.map(r => r.map(v => `"${v.replaceAll('"', '""')}"`).join(";")).join("\n")], { type: "text/csv;charset=utf-8" });
@@ -103,10 +131,10 @@ export default function Home() {
 
       <section className="content">
         {view === "Übersicht" && <>
-          <div className="page-head"><div><p className="eyebrow">DIENSTAG, 21. JULI 2026</p><h1>Guten Abend, Jürgen.</h1><p>Hier sehen Sie Marktpotenzial und aktuellen Akquisitionsfortschritt.</p></div><button className="primary" onClick={() => setShowAdd(true)}>＋ Unternehmen hinzufügen</button></div>
+          <div className="page-head"><div><p className="eyebrow">MARKTPOTENZIAL & AKQUISITION</p><h1>Guten Abend, Jürgen.</h1><p>Hier sehen Sie Marktpotenzial und aktuellen Akquisitionsfortschritt.</p></div><div className="head-actions"><button className="research-button" onClick={() => setShowResearch(true)}>✦ Neue Kunden suchen</button><button className="primary" onClick={() => setShowAdd(true)}>＋ Unternehmen hinzufügen</button></div></div>
           <div className="radius-card"><div><span className="location-pin">●</span><div><strong>Marktgebiet</strong><p>Ausgangspunkt Nürnberg · <b>{radius} km Umkreis</b></p></div></div><div className="range-wrap"><span>10</span><input aria-label="Marktradius" type="range" min="10" max="100" step="10" value={radius} onChange={e => setRadius(Number(e.target.value))}/><span>100 km</span><output>{radius} km</output></div></div>
           <div className="kpis">
-            <article><span className="kpi-icon blue">◎</span><div><small>MARKTPOTENZIAL</small><strong>{withinRadius.length * 137}</strong><p>geschätzte KMU im Gebiet</p></div><em>Radius {radius} km</em></article>
+            <article className="market-potential"><span className="kpi-icon blue">◎</span><div><small>MARKTPOTENZIAL</small><strong>{withinRadius.length * 137}</strong><p>geschätzte KMU im Gebiet</p></div><em>Radius {radius} km</em><button className="kpi-search" onClick={() => setShowResearch(true)}>✦ 10 neue finden</button></article>
             <article><span className="kpi-icon green">▣</span><div><small>IN DATENBANK</small><strong>{withinRadius.length}</strong><p>{qualified} davon qualifiziert</p></div><em className="up">↑ 12 %</em></article>
             <article><span className="kpi-icon amber">◫</span><div><small>IN BEARBEITUNG</small><strong>{contacted}</strong><p>{interested} mit Interesse</p></div><em>Ivan</em></article>
             <article><span className="kpi-icon violet">◆</span><div><small>ZUSAGEN</small><strong>{confirmed}</strong><p>{closed} Masterclass-Aufträge</p></div><em className="up">↑ aktiv</em></article>
@@ -148,6 +176,7 @@ export default function Home() {
     {selected && <div className="modal-backdrop" onMouseDown={()=>setSelected(null)}><aside className="drawer" onMouseDown={e=>e.stopPropagation()}><button className="close" onClick={()=>setSelected(null)}>×</button><div className="company-hero"><span>{initials(selected.name)}</span><div><small>{selected.industry}</small><h2>{selected.name}</h2><p>⌖ {selected.address}</p></div></div><div className="detail-grid"><div><small>GESCHÄFTSFÜHRUNG</small><strong>{selected.manager}</strong></div><div><small>GRÖSSE</small><strong>{selected.employees} Mitarbeiter</strong></div><div><small>TELEFON</small><a href={`tel:${selected.phone}`}>{selected.phone}</a></div><div><small>E-MAIL</small><a href={`mailto:${selected.email}`}>{selected.email}</a></div></div><hr/><label className="field"><span>Funnel-Stufe</span><select value={selected.stage} onChange={e=>updateStage(selected,e.target.value)}>{stages.map(s=><option key={s}>{s}</option>)}</select></label><div className="next-box"><small>NÄCHSTER SCHRITT · {fmtDate(selected.nextDate)}</small><strong>{selected.nextAction}</strong><span>Zuständig: {selected.owner}</span></div><div className="notes"><small>NOTIZEN</small><p>{selected.notes||"Noch keine Notizen vorhanden."}</p></div><div className="source">Datenquelle: {selected.source} · Entfernung {selected.distance} km</div><button className="primary wide" onClick={()=>updateStage(selected, stages[Math.min(stages.length-1,stages.indexOf(selected.stage)+1)])}>Als nächsten Schritt markieren →</button></aside></div>}
 
     {showAdd && <div className="modal-backdrop" onMouseDown={()=>setShowAdd(false)}><form className="add-modal" onSubmit={addCompany} onMouseDown={e=>e.stopPropagation()}><button type="button" className="close" onClick={()=>setShowAdd(false)}>×</button><p className="eyebrow">NEUER MARKTKONTAKT</p><h2>Unternehmen hinzufügen</h2><div className="form-grid"><label><span>Unternehmensname *</span><input name="name" required/></label><label><span>Branche *</span><input name="industry" required/></label><label><span>Ort *</span><input name="city" required/></label><label><span>Entfernung in km *</span><input name="distance" type="number" min="0" required/></label><label className="span2"><span>Adresse</span><input name="address"/></label><label><span>Geschäftsführung</span><input name="manager"/></label><label><span>Mitarbeiter</span><select name="employees"><option>10–19</option><option>20–49</option><option>50–99</option><option>100–249</option></select></label><label><span>Telefon</span><input name="phone" type="tel"/></label><label><span>E-Mail</span><input name="email" type="email"/></label><label className="span2"><span>Website</span><input name="website"/></label></div><div className="form-actions"><button type="button" className="secondary" onClick={()=>setShowAdd(false)}>Abbrechen</button><button className="primary">Unternehmen anlegen</button></div></form></div>}
+    {showResearch && <div className="modal-backdrop centered" onMouseDown={()=>setShowResearch(false)}><form className="research-modal" onSubmit={startResearch} onMouseDown={e=>e.stopPropagation()}><button type="button" className="close" onClick={()=>setShowResearch(false)}>×</button><div className="research-title"><span>✦</span><div><p className="eyebrow">DEEP SEARCH · 10 NEUE KONTAKTE</p><h2>Neue Unternehmen recherchieren</h2><p>Definieren Sie die Zielgruppe. Gefundene Unternehmen werden geprüft, gegen Dubletten abgeglichen und als „Neu gefunden“ gespeichert.</p></div></div><div className="form-grid"><label><span>Branche *</span><input name="industry" placeholder="z. B. Maschinenbau" required/></label><label><span>Umkreis ab Nürnberg *</span><select name="radius" defaultValue={radius}>{[10,20,30,40,50,60,70,80,90,100].map(r=><option key={r} value={r}>{r} km</option>)}</select></label><label><span>Unternehmensgröße *</span><select name="employees"><option>10–19 Mitarbeiter</option><option>20–49 Mitarbeiter</option><option>50–99 Mitarbeiter</option><option>100–249 Mitarbeiter</option><option>10–249 Mitarbeiter</option></select></label><label><span>Rechtsform / Firmierung</span><select name="legalForm"><option>Alle Rechtsformen</option><option>GmbH</option><option>GmbH & Co. KG</option><option>KG</option><option>AG</option><option>e.K.</option></select></label><label className="span2"><span>Regionaler Schwerpunkt</span><input name="region" defaultValue="Nürnberg, Fürth und Erlangen"/></label></div><div className="research-info"><strong>Was die Recherche übernimmt</strong><span>10 neue, möglichst vollständige Datensätze · Firmenname · Anschrift · Branche · Größe · Website · Telefon · Geschäftsführung · Quellenangabe</span></div>{lastResearch && <p className="last-research">Letzter Auftrag: {lastResearch.industry}, {lastResearch.radius} km · Status: {lastResearch.status}</p>}<div className="form-actions"><button type="button" className="secondary" onClick={()=>setShowResearch(false)}>Abbrechen</button><button className="primary" disabled={researching}>{researching ? "Recherche wird angelegt …" : "✦ Tiefensuche starten"}</button></div></form></div>}
     {notice && <div className="toast">✓ {notice}</div>}
   </div>
 }
