@@ -22,17 +22,6 @@ const stageShort: Record<string, string> = {
   "Angebot erstellt": "Angebot", "Auftrag abgeschlossen": "Abschluss"
 };
 
-const fallbackCompanies: Company[] = [
-  { id: 1, name: "Franken Präzisionstechnik GmbH", city: "Nürnberg", address: "Fürther Straße 105, 90429 Nürnberg", distance: 3, industry: "Maschinenbau", employees: "50–99", phone: "+49 911 234 890", email: "info@franken-praezision.de", website: "franken-praezision.de", manager: "Dr. Martin Seidel", stage: "Interesse", priority: "A", owner: "Ivan", nextAction: "Termin für Erstgespräch bestätigen", nextDate: "2026-07-23", source: "Branchenverzeichnis", notes: "Interesse an KI für Qualitätssicherung." },
-  { id: 2, name: "Metropol IT-Systemhaus GmbH", city: "Fürth", address: "Flößaustraße 22, 90763 Fürth", distance: 9, industry: "IT-Dienstleistungen", employees: "20–49", phone: "+49 911 765 432", email: "kontakt@metropol-it.de", website: "metropol-it.de", manager: "Sabine Krüger", stage: "Unterlagen versendet", priority: "A", owner: "Ivan", nextAction: "Nachfassen zur Einladung", nextDate: "2026-07-22", source: "Unternehmenswebsite", notes: "Unterlagen am 18.07. versendet." },
-  { id: 3, name: "Erlanger Medizintechnik KG", city: "Erlangen", address: "Henkestraße 18, 91054 Erlangen", distance: 19, industry: "Medizintechnik", employees: "100–249", phone: "+49 9131 456 780", email: "office@em-technik.de", website: "em-technik.de", manager: "Thomas Brandt", stage: "Veranstaltung zugesagt", priority: "A", owner: "Ivan", nextAction: "Teilnehmernamen aufnehmen", nextDate: "2026-07-28", source: "Netzwerk", notes: "Zusage für zwei Führungskräfte." },
-  { id: 4, name: "Hofmann Logistik & Service GmbH", city: "Schwabach", address: "Nördliche Ringstraße 8, 91126 Schwabach", distance: 16, industry: "Logistik", employees: "50–99", phone: "+49 9122 800 120", email: "info@hofmann-logistik.de", website: "hofmann-logistik.de", manager: "Katrin Hofmann", stage: "Kontakt aufgenommen", priority: "B", owner: "Ivan", nextAction: "Erneuter Anruf", nextDate: "2026-07-24", source: "Messekontakt", notes: "Assistenz bittet um Rückruf Donnerstag." },
-  { id: 5, name: "Aischgrund Verpackungen GmbH", city: "Herzogenaurach", address: "Industriestraße 12, 91074 Herzogenaurach", distance: 21, industry: "Verpackung", employees: "20–49", phone: "+49 9132 612 330", email: "kontakt@aischgrund-pack.de", website: "aischgrund-pack.de", manager: "Jürgen Meier", stage: "Qualifiziert", priority: "B", owner: "Ivan", nextAction: "Entscheider direkt ansprechen", nextDate: "2026-07-25", source: "Branchenverzeichnis", notes: "Gute Passung, Produktion mit 38 Beschäftigten." },
-  { id: 6, name: "Pegnitz Elektrotechnik GmbH", city: "Lauf a.d. Pegnitz", address: "Sichartstraße 7, 91207 Lauf", distance: 18, industry: "Elektrotechnik", employees: "10–19", phone: "+49 9123 987 450", email: "mail@pegnitz-elektro.de", website: "pegnitz-elektro.de", manager: "Andreas Wolf", stage: "Neu gefunden", priority: "C", owner: "Ivan", nextAction: "Daten prüfen", nextDate: "2026-07-29", source: "Import", notes: "Geschäftsführung noch verifizieren." },
-  { id: 7, name: "Altmühl Kunststofftechnik GmbH", city: "Roth", address: "Gildestraße 4, 91154 Roth", distance: 27, industry: "Kunststofftechnik", employees: "50–99", phone: "+49 9171 220 890", email: "info@altmuehl-kunststoff.de", website: "altmuehl-kunststoff.de", manager: "Petra Lindner", stage: "Gespräch geführt", priority: "A", owner: "Ivan", nextAction: "Einladung personalisieren", nextDate: "2026-07-22", source: "Empfehlung", notes: "Geschäftsführerin möchte konkreten Praxisnutzen sehen." },
-  { id: 8, name: "Jura Gebäudetechnik GmbH", city: "Neumarkt i.d.OPf.", address: "Regensburger Straße 31, 92318 Neumarkt", distance: 41, industry: "Gebäudetechnik", employees: "100–249", phone: "+49 9181 440 210", email: "zentrale@jura-gt.de", website: "jura-gt.de", manager: "Michael Schuster", stage: "Kontakt vorgesehen", priority: "B", owner: "Ivan", nextAction: "Kontakt über Empfehlung", nextDate: "2026-07-30", source: "Netzwerk", notes: "War Teilnehmer einer regionalen Wirtschaftsveranstaltung." }
-];
-
 const fallbackEvents: EventItem[] = [
   { id: 1, title: "KI-Abend Nürnberg", date: "2026-09-17T18:00", location: "Nürnberg · Tafelhof Palais", capacity: 60, invited: 34, confirmed: 18, attended: 0 },
   { id: 2, title: "KI-Werkstatt Erlangen", date: "2026-10-08T18:30", location: "Erlangen · Digitales Gründerzentrum", capacity: 45, invited: 16, confirmed: 7, attended: 0 },
@@ -45,7 +34,7 @@ function fmtDate(value: string) { return new Intl.DateTimeFormat("de-DE", { day:
 export default function Home() {
   const [view, setView] = useState("Übersicht");
   const [radius, setRadius] = useState(50);
-  const [companies, setCompanies] = useState<Company[]>(fallbackCompanies);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [events] = useState<EventItem[]>(fallbackEvents);
   const [query, setQuery] = useState("");
   const [industry, setIndustry] = useState("Alle Branchen");
@@ -60,7 +49,7 @@ export default function Home() {
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
-    fetch("/api/companies").then(r => r.ok ? r.json() : Promise.reject()).then(d => d.companies?.length && setCompanies(d.companies)).catch(() => {});
+    fetch("/api/companies").then(r => r.ok ? r.json() : Promise.reject()).then(d => setCompanies(Array.isArray(d.companies) ? d.companies : [])).catch(() => setCompanies([]));
     fetch("/api/sync/notion").then(r => r.ok ? r.json() : Promise.reject()).then(d => { setNotionConfigured(Boolean(d.configured)); setNotionPending(Number(d.pending || 0)); }).catch(() => {});
   }, []);
 
