@@ -2,8 +2,10 @@ import { asc, desc, eq, isNull } from "drizzle-orm";
 import { getDb } from "../../../../db";
 import { companies, notionSyncRuns } from "../../../../db/schema";
 import { notionConfigured, syncCompanyToNotion } from "../../../../lib/notion";
+import { getSessionUser } from "../../../../lib/session-auth";
 
 export async function GET() {
+  if (!(await getSessionUser())) return Response.json({ error: "Nicht angemeldet" }, { status: 401 });
   const db = getDb();
   const [lastRun] = await db.select().from(notionSyncRuns).orderBy(desc(notionSyncRuns.id)).limit(1);
   const pending = await db.select({ id: companies.id }).from(companies).where(isNull(companies.notionSyncedAt));
@@ -11,6 +13,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  if (!(await getSessionUser())) return Response.json({ error: "Nicht angemeldet" }, { status: 401 });
   if (!notionConfigured()) return Response.json({ message: "Notion ist vorbereitet, aber der geschützte Zugangsschlüssel fehlt noch.", configured: false }, { status: 503 });
   const body = await request.json().catch(() => ({})) as { companyId?: number };
   const db = getDb();

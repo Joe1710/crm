@@ -1,13 +1,16 @@
 import { desc } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { companies } from "../../../db/schema";
+import { getSessionUser } from "../../../lib/session-auth";
 
 export async function GET() {
+  if (!(await getSessionUser())) return Response.json({ error: "Nicht angemeldet" }, { status: 401 });
   try { return Response.json({ companies: await getDb().select().from(companies).orderBy(desc(companies.id)) }); }
   catch { return Response.json({ companies: [] }); }
 }
 
 export async function POST(request: Request) {
+  if (!(await getSessionUser())) return Response.json({ error: "Nicht angemeldet" }, { status: 401 });
   try {
     const body = await request.json() as Record<string, unknown>;
     const [company] = await getDb().insert(companies).values({

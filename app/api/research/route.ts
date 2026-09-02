@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { companies, researchJobs } from "../../../db/schema";
 import { notionConfigured, syncCompanyToNotion } from "../../../lib/notion";
+import { getSessionUser } from "../../../lib/session-auth";
 
 type FoundCompany = {
   name: string;
@@ -112,6 +113,7 @@ Qualitätsregeln:
 }
 
 export async function POST(request: Request) {
+  if (!(await getSessionUser())) return Response.json({ error: "Nicht angemeldet" }, { status: 401 });
   const db = getDb();
   let jobId: number | undefined;
   try {

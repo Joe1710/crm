@@ -1,8 +1,10 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "../../../../db";
 import { companies } from "../../../../db/schema";
+import { getSessionUser } from "../../../../lib/session-auth";
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
+  if (!(await getSessionUser())) return Response.json({ error: "Nicht angemeldet" }, { status: 401 });
   try {
     const { id } = await context.params; const body = await request.json() as { stage?: string };
     if (!body.stage) return Response.json({ error: "Status fehlt" }, { status: 400 });
