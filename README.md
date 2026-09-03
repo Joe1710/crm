@@ -16,6 +16,26 @@ npm run dev
 npm run build
 ```
 
+## Tiefensuche konfigurieren
+
+Die CRM-Tiefensuche nutzt die OpenAI Responses API mit Websuche und strukturierten JSON-Ergebnissen. Der API-Schlüssel bleibt ausschließlich auf dem Server.
+
+Für die lokale Entwicklung eine ignorierte `.env.local` anlegen:
+
+```bash
+OPENAI_API_KEY=sk-...
+# Optional; Standard ist gpt-5.4-mini
+OPENAI_RESEARCH_MODEL=gpt-5.4-mini
+```
+
+Für Cloudflare den Schlüssel als Secret hinterlegen:
+
+```bash
+npx wrangler secret put OPENAI_API_KEY --config wrangler.deploy.jsonc
+```
+
+Angemeldete Nutzer können den Status über `GET /api/research` prüfen und mit `POST /api/research` eine Suche starten. Die Schnittstelle validiert Suchkriterien, Quellen-URLs und Entfernungen, entfernt Dubletten und speichert nur belegte Treffer.
+
 This starter does not use `wrangler.jsonc`.
 
 ## Included Shape

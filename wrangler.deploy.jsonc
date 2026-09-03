@@ -10,8 +10,8 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "site-creator-d1",
-      "database_id": "REPLACE_WITH_REAL_D1_DATABASE_ID"
+      "database_name": "ki-masterclass-crm-db",
+      "database_id": "157083ee-d2fd-420f-9d42-f1a2b6fd8fd7"
     }
   ]
 }
