@@ -162,13 +162,13 @@ Qualitätsregeln:
         tools: [{ type: "web_search" }],
         tool_choice: "required",
         input: prompt,
-        reasoning: { effort: "medium" },
-        max_tool_calls: 20,
+        reasoning: { effort: "low" },
+        max_tool_calls: 12,
         max_output_tokens: 10000,
         store: false,
         text: { format: { type: "json_schema", name: "company_research", strict: true, schema: companySchema } }
       }),
-      signal: AbortSignal.timeout(120_000)
+      signal: AbortSignal.timeout(280_000)
     });
   } catch (error) {
     if (error instanceof Error && error.name === "TimeoutError") {
