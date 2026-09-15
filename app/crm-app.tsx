@@ -96,10 +96,13 @@ export default function CrmApp({ user }: { user: SessionUser }) {
     setNotionSyncing(true);
     try {
       const response = await api("/api/sync/notion", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
-      const result = await response.json() as { message?: string; configured?: boolean; succeeded?: number };
+      const result = await response.json() as { message?: string; configured?: boolean; created?: number; pulled?: number; pushed?: number };
       setNotionConfigured(Boolean(result.configured));
       if (!response.ok) throw new Error(result.message || "Notion-Synchronisation fehlgeschlagen");
-      setNotionPending(old => Math.max(0, old - Number(result.succeeded || 0)));
+      const companiesResponse = await api("/api/companies");
+      if (companiesResponse.ok) { const d = await companiesResponse.json(); setCompanies(Array.isArray(d.companies) ? d.companies : []); }
+      const pendingResponse = await api("/api/sync/notion");
+      if (pendingResponse.ok) { const d = await pendingResponse.json(); setNotionPending(Number(d.pending || 0)); }
       setNotice(result.message || "Notion wurde synchronisiert");
     } catch (error) { setNotice(error instanceof Error ? error.message : "Notion-Synchronisation fehlgeschlagen"); }
     finally { setNotionSyncing(false); setTimeout(() => setNotice(""), 4500); }

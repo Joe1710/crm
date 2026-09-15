@@ -1,0 +1,1 @@
+ALTER TABLE `companies` ADD `notion_last_edited_at` text;

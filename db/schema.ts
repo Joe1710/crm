@@ -27,6 +27,7 @@ export const companies = sqliteTable("companies", {
   nextAction: text("next_action").notNull().default(""), nextDate: text("next_date").notNull().default(""),
   source: text("source").notNull().default("Manuell"), notes: text("notes").notNull().default(""),
   notionPageId: text("notion_page_id"), notionSyncedAt: text("notion_synced_at"), notionSyncError: text("notion_sync_error"),
+  notionLastEditedAt: text("notion_last_edited_at"),
   createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
   updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP")
 });
