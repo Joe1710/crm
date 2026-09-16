@@ -104,7 +104,7 @@ export async function POST(request: Request) {
     failed++;
     const message = error instanceof Error ? error.message : "Unbekannter Notion-Fehler";
     await db.update(notionSyncRuns).set({ status: "Mit Fehlern", message, finishedAt: new Date().toISOString() }).where(eq(notionSyncRuns.id, run.id));
-    return Response.json({ configured: true, error: message }, { status: 502 });
+    return Response.json({ configured: true, message }, { status: 502 });
   }
 
   const succeeded = created + pulled + pushed;
