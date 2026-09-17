@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { EVENT_PITCH_TEXT } from "./email-footer";
 
 const SPEED_DATING_URL = "https://www.speed-date-ki-mittelstand.ki-masterclass.com";
 const SPEED_DATING_DATE = "11.11.";
@@ -45,11 +46,11 @@ const outreachSchema = {
     highlight: { type: "string" },
     highlightSourceUrl: { type: "string" },
     email1Subject: { type: "string" },
-    email1Body: { type: "string" },
+    email1Intro: { type: "string" },
     email2Subject: { type: "string" },
     email2Body: { type: "string" }
   },
-  required: ["highlight", "highlightSourceUrl", "email1Subject", "email1Body", "email2Subject", "email2Body"],
+  required: ["highlight", "highlightSourceUrl", "email1Subject", "email1Intro", "email2Subject", "email2Body"],
   additionalProperties: false
 };
 
@@ -108,11 +109,24 @@ Schritt 1 – Besonderheit recherchieren:
 - Erfinde nichts. Wenn du keine belegbare Besonderheit findest, gib highlight und highlightSourceUrl als leere Zeichenfolge zurück statt zu spekulieren.
 - highlightSourceUrl ist die eine URL, die die Besonderheit tatsächlich belegt.
 
-Schritt 2 – Zwei E-Mails entwerfen (Deutsch, Sie-Anrede, professionell und warm, keine Marketing-Floskeln):
-- E-Mail 1 (Einladung, ca. 150–200 Wörter): geht konkret auf die gefundene Besonderheit ein, erklärt kurz und spezifisch, warum das KI Masterclass Speed-Dating am ${SPEED_DATING_DATE} in Nürnberg gerade für dieses Unternehmen relevant ist, enthält den Link ${SPEED_DATING_URL} zur Anmeldung, endet mit einer freundlichen Grußformel unterschrieben mit "${input.ownerName}". Wenn keine Besonderheit gefunden wurde, geht die E-Mail stattdessen allgemein auf die Branche "${input.industry}" ein.
-- E-Mail 2 (Nachfassen, ca. 60–80 Wörter): kurze, freundliche Erinnerung, verweist darauf dass bereits eine E-Mail versendet wurde, enthält denselben Link, unterschrieben mit "${input.ownerName}".
-- email1Subject/email2Subject sind kurze, konkrete Betreffzeilen (keine Klickköder-Formulierungen).
-- WICHTIG: Die E-Mails werden als reiner Text versendet, nicht als HTML. Schreibe daher NIEMALS Markdown-Links wie "([domain.de](https://...))" oder "[Text](URL)" in email1Body/email2Body. Nenne eine Quelle, falls überhaupt nötig, nur als ausgeschriebenen Klartext-Satz ohne Klammern oder eckige Klammern. Die einzige URL, die in den E-Mail-Texten vorkommen darf, ist ${SPEED_DATING_URL} als reiner Text ohne Formatierung.`;
+Kernbotschaft der KI Masterclass, die in E-Mail 1 spürbar mitschwingen soll (nicht als plumpe Werbefloskel, sondern konkret mit der Besonderheit des Unternehmens verknüpft):
+- Wir bringen KI in den Mittelstand – nicht als abstraktes Trendthema, sondern praktisch nutzbar für den Alltag mittelständischer Betriebe.
+- Uns ist wichtig, dass der Mittelstand selbst lernt, wie KI funktioniert, statt sich von großen Anbietern vorschreiben zu lassen, welche Tools und Prozesse er einzusetzen hat.
+- Es geht um Eigenständigkeit: Unternehmen sollen KI-Entscheidungen selbst in der Hand behalten, informiert und unabhängig, statt abhängig von externen Dienstleistern zu werden.
+- Das Speed-Dating ist ein niedrigschwelliger, konkreter erster Schritt dorthin – kurze, praxisnahe Gespräche statt Grundsatzvortrag.
+
+Der werbliche Teil von E-Mail 1 (Aufzählung der Programmpunkte, Hinweis auf kostenfreie Teilnahme, Anmeldelink, Schlusssatz) ist bereits fest vorgegeben und wird automatisch angehängt – du schreibst NUR die persönliche Eröffnung davor.
+
+Anrede (gilt für email1Intro UND email2Body gleichermaßen):
+- Ist eine Geschäftsführung mit Namen bekannt ("${input.manager || "unbekannt"}"), MUSS die allererste Zeile eine persönliche Anrede mit Nachnamen sein: "Sehr geehrter Herr {Nachname}," oder "Sehr geehrte Frau {Nachname}," – das Geschlecht anhand des Vornamens sinnvoll einschätzen. Bei einem erkennbar aus mehreren Namen bestehenden Geschäftsführungsteam oder einer Rechtsform ohne natürliche Person den naheliegendsten/erstgenannten Namen verwenden.
+- Ist keine Geschäftsführung bekannt (Wert "unbekannt"), als erste Zeile "Sehr geehrte Damen und Herren," verwenden.
+- Auf die Anrede folgt eine Leerzeile, dann erst der Fließtext.
+
+Schritt 2 – Inhalte entwerfen (Deutsch, Sie-Anrede, professionell und warm, keine Marketing-Floskeln):
+- email1Intro (Anrede + ca. 90–130 Wörter Fließtext in zwei Absätzen, jeweils durch eine Leerzeile getrennt): Absatz 1 geht konkret auf die gefundene Besonderheit ein und würdigt sie ehrlich. Absatz 2 verknüpft diese Besonderheit mit der oben genannten Kernbotschaft (Mittelstand, Eigenständigkeit, KI selbst gestalten statt diktiert bekommen) und leitet inhaltlich zum Speed-Dating-Angebot über, OHNE die Einladung selbst, das Datum, den Link oder Formulierungen wie "Deshalb möchte ich Sie einladen" auszuformulieren – das folgt automatisch danach. Wenn keine Besonderheit gefunden wurde, geht Absatz 1 stattdessen allgemein auf typische Herausforderungen der Branche "${input.industry}" ein.
+- email2Body (Anrede + Nachfassen, ca. 80–110 Wörter Fließtext): kurze, freundliche Erinnerung, verweist darauf dass bereits eine E-Mail versendet wurde, greift die Kernbotschaft in einem Satz nochmal auf, lädt nochmal knapp zum KI Masterclass Speed-Dating am ${SPEED_DATING_DATE} in Nürnberg ein und enthält den Link ${SPEED_DATING_URL}. Endet inhaltlich, OHNE eine Grußformel oder Signatur anzuhängen – das wird automatisch ergänzt.
+- email1Subject/email2Subject sind kurze, konkrete Betreffzeilen, die auf die Besonderheit oder das Unternehmen Bezug nehmen (keine Klickköder-Formulierungen).
+- WICHTIG: Die E-Mails werden serverseitig zusätzlich als HTML aufbereitet. Schreibe daher NIEMALS Markdown-Links wie "([domain.de](https://...))" oder "[Text](URL)" in email1Intro/email2Body. Nenne eine Quelle, falls überhaupt nötig, nur als ausgeschriebenen Klartext-Satz ohne Klammern oder eckige Klammern. Die einzige URL, die in email2Body vorkommen darf, ist ${SPEED_DATING_URL} als reiner Text ohne Formatierung. In email1Intro darf gar keine URL vorkommen.`;
 
   let response: Response;
   try {
@@ -126,7 +140,7 @@ Schritt 2 – Zwei E-Mails entwerfen (Deutsch, Sie-Anrede, professionell und war
         input: prompt,
         reasoning: { effort: "low" },
         max_tool_calls: 6,
-        max_output_tokens: 4000,
+        max_output_tokens: 5000,
         store: false,
         text: { format: { type: "json_schema", name: "company_outreach", strict: true, schema: outreachSchema } }
       }),
@@ -153,9 +167,10 @@ Schritt 2 – Zwei E-Mails entwerfen (Deutsch, Sie-Anrede, professionell und war
   const text = outputText(result);
   if (!text) throw new OutreachApiError("Die Recherche hat kein auswertbares Ergebnis geliefert.", 502);
 
-  let parsed: Partial<OutreachResult>;
+  type ParsedOutreach = { highlight?: string; highlightSourceUrl?: string; email1Subject?: string; email1Intro?: string; email2Subject?: string; email2Body?: string };
+  let parsed: ParsedOutreach;
   try {
-    parsed = JSON.parse(text) as Partial<OutreachResult>;
+    parsed = JSON.parse(text) as ParsedOutreach;
   } catch {
     throw new OutreachApiError("Das Ergebnis konnte nicht ausgewertet werden.", 502);
   }
@@ -167,12 +182,14 @@ Schritt 2 – Zwei E-Mails entwerfen (Deutsch, Sie-Anrede, professionell und war
   }
 
   const email1Subject = String(parsed.email1Subject || "").trim();
-  const email1Body = stripMarkdownLinks(String(parsed.email1Body || "").trim());
+  const email1Intro = stripMarkdownLinks(String(parsed.email1Intro || "").trim());
   const email2Subject = String(parsed.email2Subject || "").trim();
   const email2Body = stripMarkdownLinks(String(parsed.email2Body || "").trim());
-  if (!email1Subject || !email1Body || !email2Subject || !email2Body) {
+  if (!email1Subject || !email1Intro || !email2Subject || !email2Body) {
     throw new OutreachApiError("Die E-Mail-Entwürfe konnten nicht vollständig erzeugt werden. Bitte erneut versuchen.", 502);
   }
+
+  const email1Body = `${email1Intro}\n\n${EVENT_PITCH_TEXT}`;
 
   return { highlight, highlightSourceUrl: highlightSourceUrl || "", email1Subject, email1Body, email2Subject, email2Body };
 }

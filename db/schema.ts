@@ -38,6 +38,8 @@ export const companies = sqliteTable("companies", {
   email2Subject: text("email2_subject").notNull().default(""),
   email2Body: text("email2_body").notNull().default(""),
   email2GeneratedAt: text("email2_generated_at"),
+  email1SentAt: text("email1_sent_at"),
+  email2SentAt: text("email2_sent_at"),
   createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
   updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP")
 });

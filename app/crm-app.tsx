@@ -9,8 +9,8 @@ type Company = {
   manager: string; stage: string; priority: string; owner: string; nextAction: string;
   nextDate: string; source: string; notes: string; originCity: string;
   highlight: string; highlightSourceUrl: string; highlightGeneratedAt: string | null;
-  email1Subject: string; email1Body: string; email1GeneratedAt: string | null;
-  email2Subject: string; email2Body: string; email2GeneratedAt: string | null;
+  email1Subject: string; email1Body: string; email1GeneratedAt: string | null; email1SentAt: string | null;
+  email2Subject: string; email2Body: string; email2GeneratedAt: string | null; email2SentAt: string | null;
   notionPageId?: string | null; notionSyncedAt?: string | null; notionSyncError?: string | null;
 };
 
@@ -69,6 +69,8 @@ export default function CrmApp({ user }: { user: SessionUser }) {
   const [emailDrafts, setEmailDrafts] = useState<{ email1Subject?: string; email1Body?: string; email2Subject?: string; email2Body?: string }>({});
   const [savingEmail, setSavingEmail] = useState<1 | 2 | null>(null);
   const [confirmResearch, setConfirmResearch] = useState(false);
+  const [confirmSend, setConfirmSend] = useState<1 | 2 | null>(null);
+  const [sending, setSending] = useState<1 | 2 | null>(null);
 
   const firstName = user.name.split(" ")[0];
 
@@ -88,6 +90,7 @@ export default function CrmApp({ user }: { user: SessionUser }) {
   useEffect(() => {
     setEmailDrafts({});
     setConfirmResearch(false);
+    setConfirmSend(null);
   }, [selected?.id]);
 
   const withinRadius = useMemo(() => companies.filter(c => (originCity === ALL_CITIES || c.originCity === originCity) && c.distance <= radius), [companies, radius, originCity]);
@@ -111,7 +114,7 @@ export default function CrmApp({ user }: { user: SessionUser }) {
   async function addCompany(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
-    const next: Company = { id: Date.now(), name: String(data.get("name")), city: String(data.get("city")), address: String(data.get("address")), distance: Number(data.get("distance")), industry: String(data.get("industry")), employees: String(data.get("employees")), phone: String(data.get("phone")), email: String(data.get("email")), website: String(data.get("website")), manager: String(data.get("manager")), stage: "Neu gefunden", priority: "B", owner: firstName, nextAction: "Daten prüfen und qualifizieren", nextDate: "2026-07-28", source: "Manuell", notes: "", originCity: originCity === ALL_CITIES ? DEFAULT_ORIGIN_CITY : originCity, highlight: "", highlightSourceUrl: "", highlightGeneratedAt: null, email1Subject: "", email1Body: "", email1GeneratedAt: null, email2Subject: "", email2Body: "", email2GeneratedAt: null };
+    const next: Company = { id: Date.now(), name: String(data.get("name")), city: String(data.get("city")), address: String(data.get("address")), distance: Number(data.get("distance")), industry: String(data.get("industry")), employees: String(data.get("employees")), phone: String(data.get("phone")), email: String(data.get("email")), website: String(data.get("website")), manager: String(data.get("manager")), stage: "Neu gefunden", priority: "B", owner: firstName, nextAction: "Daten prüfen und qualifizieren", nextDate: "2026-07-28", source: "Manuell", notes: "", originCity: originCity === ALL_CITIES ? DEFAULT_ORIGIN_CITY : originCity, highlight: "", highlightSourceUrl: "", highlightGeneratedAt: null, email1Subject: "", email1Body: "", email1GeneratedAt: null, email1SentAt: null, email2Subject: "", email2Body: "", email2GeneratedAt: null, email2SentAt: null };
     setCompanies(old => [next, ...old]); setShowAdd(false); setNotice("Unternehmen wurde angelegt");
     try { const r = await api("/api/companies", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(next) }); if (r.ok) { const d = await r.json(); setCompanies(old => old.map(c => c.id === next.id ? d.company : c)); if (notionConfigured) api("/api/sync/notion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId: d.company.id }) }).catch(()=>{}); } } catch {}
     setTimeout(() => setNotice(""), 2800);
@@ -172,6 +175,24 @@ export default function CrmApp({ user }: { user: SessionUser }) {
       setNotice(error instanceof Error ? error.message : "Speichern fehlgeschlagen");
     } finally {
       setSavingEmail(null); setTimeout(() => setNotice(""), 2800);
+    }
+  }
+
+  async function doSend(company: Company, n: 1 | 2, subject: string, body: string) {
+    setConfirmSend(null);
+    setSending(n);
+    try {
+      const response = await api(`/api/companies/${company.id}/send-email`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ emailNumber: n, subject, body }) });
+      const result = await response.json() as { message?: string; company?: Company };
+      if (!response.ok || !result.company) throw new Error(result.message || "Mailversand fehlgeschlagen");
+      setCompanies(old => old.map(c => c.id === company.id ? result.company! : c));
+      setSelected(sel => sel && sel.id === company.id ? result.company! : sel);
+      setEmailDrafts(d => { const next = { ...d }; delete next[n === 1 ? "email1Subject" : "email2Subject"]; delete next[n === 1 ? "email1Body" : "email2Body"]; return next; });
+      setNotice("E-Mail wurde versendet");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Mailversand fehlgeschlagen");
+    } finally {
+      setSending(null); setTimeout(() => setNotice(""), 4500);
     }
   }
 
@@ -284,6 +305,11 @@ export default function CrmApp({ user }: { user: SessionUser }) {
               <textarea rows={8} value={emailDrafts.email1Body ?? selected.email1Body} onChange={e => setEmailDrafts(d => ({ ...d, email1Body: e.target.value }))}/>
               <div className="outreach-actions">
                 {(emailDrafts.email1Subject !== undefined || emailDrafts.email1Body !== undefined) && <button className="secondary" disabled={savingEmail === 1} onClick={() => saveEmail(selected, 1, emailDrafts.email1Subject ?? selected.email1Subject, emailDrafts.email1Body ?? selected.email1Body)}>{savingEmail === 1 ? "Speichert …" : "Speichern"}</button>}
+                {selected.email1SentAt
+                  ? <span className="sent-badge">✓ Gesendet am {fmtDate(selected.email1SentAt)}</span>
+                  : confirmSend === 1
+                    ? <><span>Wirklich an {selected.email} senden?</span><button className="primary" disabled={sending === 1} onClick={() => doSend(selected, 1, emailDrafts.email1Subject ?? selected.email1Subject, emailDrafts.email1Body ?? selected.email1Body)}>{sending === 1 ? "Sendet …" : "Ja"}</button><button className="secondary" onClick={() => setConfirmSend(null)}>Abbrechen</button></>
+                    : <button className="primary" disabled={!selected.email} onClick={() => setConfirmSend(1)}>Senden</button>}
               </div>
             </div>}
 
@@ -293,6 +319,11 @@ export default function CrmApp({ user }: { user: SessionUser }) {
               <textarea rows={5} value={emailDrafts.email2Body ?? selected.email2Body} onChange={e => setEmailDrafts(d => ({ ...d, email2Body: e.target.value }))}/>
               <div className="outreach-actions">
                 {(emailDrafts.email2Subject !== undefined || emailDrafts.email2Body !== undefined) && <button className="secondary" disabled={savingEmail === 2} onClick={() => saveEmail(selected, 2, emailDrafts.email2Subject ?? selected.email2Subject, emailDrafts.email2Body ?? selected.email2Body)}>{savingEmail === 2 ? "Speichert …" : "Speichern"}</button>}
+                {selected.email2SentAt
+                  ? <span className="sent-badge">✓ Gesendet am {fmtDate(selected.email2SentAt)}</span>
+                  : confirmSend === 2
+                    ? <><span>Wirklich an {selected.email} senden?</span><button className="primary" disabled={sending === 2} onClick={() => doSend(selected, 2, emailDrafts.email2Subject ?? selected.email2Subject, emailDrafts.email2Body ?? selected.email2Body)}>{sending === 2 ? "Sendet …" : "Ja"}</button><button className="secondary" onClick={() => setConfirmSend(null)}>Abbrechen</button></>
+                    : <button className="primary" disabled={!selected.email} onClick={() => setConfirmSend(2)}>Senden</button>}
               </div>
             </div>}
           </div>
