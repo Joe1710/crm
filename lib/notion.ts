@@ -59,7 +59,7 @@ function fromNotionPage(page: NotionPage): NotionCompanyRecord {
   return {
     notionPageId: page.id, notionLastEditedAt: page.last_edited_time, crmId: crmIdText ? Number(crmIdText) : null,
     name: readTitle(p["Unternehmen"]), city: readRichText(p["Ort"]), address: readRichText(p["Anschrift"]),
-    distance: readNumber(p["Entfernung Nürnberg"]), industry: readSelect(p["Branche"]) || "Sonstige",
+    distance: readNumber(p["Entfernung zum Ausgangspunkt"]), industry: readSelect(p["Branche"]) || "Sonstige",
     employees: readSelect(p["Mitarbeiterklasse"]), phone: readPhone(p["Telefon"]), email: readEmail(p["E-Mail"]),
     website: readUrl(p["Website"]), manager: readRichText(p["Geschäftsführung"]),
     stage: readSelect(p["Status"]) || "Neu gefunden", priority: readSelect(p["Priorität"]) || "B",
@@ -82,7 +82,7 @@ function properties(company: CompanyForNotion) {
     "Mitarbeiterklasse": select(company.employees || "Unbekannt"),
     "Ort": richText(company.city),
     "Anschrift": richText(company.address),
-    "Entfernung Nürnberg": { number: company.distance },
+    "Entfernung zum Ausgangspunkt": { number: company.distance },
     "Geschäftsführung": richText(company.manager),
     "Telefon": { phone_number: company.phone || null },
     "E-Mail": { email: company.email || null },

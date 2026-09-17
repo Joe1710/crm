@@ -4,6 +4,7 @@ import { companies, researchJobs } from "../../../db/schema";
 import { notionConfigured, syncCompanyToNotion } from "../../../lib/notion";
 import { ResearchApiError, researchCompanies, researchConfigured } from "../../../lib/openai-research";
 import { getSessionUser } from "../../../lib/session-auth";
+import { DEFAULT_ORIGIN_CITY, isValidOriginCity } from "../../../lib/german-cities";
 
 export async function GET() {
   if (!(await getSessionUser())) return Response.json({ error: "Nicht angemeldet" }, { status: 401 });
@@ -21,12 +22,15 @@ export async function POST(request: Request) {
     if (!industry || radius < 10 || radius > 100) {
       return Response.json({ message: "Bitte Branche und einen Umkreis zwischen 10 und 100 km angeben." }, { status: 400 });
     }
+    const requestedOriginCity = String(body.originCity ?? "");
+    const originCity = isValidOriginCity(requestedOriginCity) ? requestedOriginCity : DEFAULT_ORIGIN_CITY;
     const criteria = {
       industry,
       radius,
       employees: String(body.employees ?? "10–249 Mitarbeiter"),
       legalForm: String(body.legalForm ?? "Alle Rechtsformen"),
-      region: String(body.region ?? "Nürnberg, Fürth und Erlangen")
+      region: String(body.region ?? "Nürnberg, Fürth und Erlangen"),
+      originCity
     };
 
     const [job] = await db.insert(researchJobs).values({
@@ -65,6 +69,7 @@ export async function POST(request: Request) {
         nextDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
         source: candidate.sourceUrls.join(" | "),
         notes: candidate.evidence.trim(),
+        originCity,
         updatedAt: new Date().toISOString()
       }).returning();
       inserted.push(company);
@@ -77,10 +82,11 @@ export async function POST(request: Request) {
     if (notionConfigured()) {
       for (const company of inserted) {
         try {
-          const notionPageId = await syncCompanyToNotion(company);
-          await db.update(companies).set({ notionPageId, notionSyncedAt: new Date().toISOString(), notionSyncError: null }).where(eq(companies.id, company.id));
-          company.notionPageId = notionPageId;
-          company.notionSyncedAt = new Date().toISOString();
+          const result = await syncCompanyToNotion(company);
+          const notionSyncedAt = new Date().toISOString();
+          await db.update(companies).set({ notionPageId: result.id, notionSyncedAt, notionLastEditedAt: result.lastEditedTime, notionSyncError: null }).where(eq(companies.id, company.id));
+          company.notionPageId = result.id;
+          company.notionSyncedAt = notionSyncedAt;
           notionSucceeded++;
         } catch (error) {
           const message = error instanceof Error ? error.message : "Notion-Synchronisation fehlgeschlagen";
