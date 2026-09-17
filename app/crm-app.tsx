@@ -8,6 +8,9 @@ type Company = {
   industry: string; employees: string; phone: string; email: string; website: string;
   manager: string; stage: string; priority: string; owner: string; nextAction: string;
   nextDate: string; source: string; notes: string; originCity: string;
+  highlight: string; highlightSourceUrl: string; highlightGeneratedAt: string | null;
+  email1Subject: string; email1Body: string; email1GeneratedAt: string | null;
+  email2Subject: string; email2Body: string; email2GeneratedAt: string | null;
   notionPageId?: string | null; notionSyncedAt?: string | null; notionSyncError?: string | null;
 };
 
@@ -62,6 +65,10 @@ export default function CrmApp({ user }: { user: SessionUser }) {
   const [notionConfigured, setNotionConfigured] = useState(false);
   const [notionPending, setNotionPending] = useState(0);
   const [notice, setNotice] = useState("");
+  const [highlightLoading, setHighlightLoading] = useState<number | null>(null);
+  const [emailDrafts, setEmailDrafts] = useState<{ email1Subject?: string; email1Body?: string; email2Subject?: string; email2Body?: string }>({});
+  const [savingEmail, setSavingEmail] = useState<1 | 2 | null>(null);
+  const [confirmResearch, setConfirmResearch] = useState(false);
 
   const firstName = user.name.split(" ")[0];
 
@@ -77,6 +84,11 @@ export default function CrmApp({ user }: { user: SessionUser }) {
   useEffect(() => {
     try { window.localStorage.setItem(ORIGIN_CITY_STORAGE_KEY, originCity); } catch {}
   }, [originCity]);
+
+  useEffect(() => {
+    setEmailDrafts({});
+    setConfirmResearch(false);
+  }, [selected?.id]);
 
   const withinRadius = useMemo(() => companies.filter(c => (originCity === ALL_CITIES || c.originCity === originCity) && c.distance <= radius), [companies, radius, originCity]);
   const industries = useMemo(() => ["Alle Branchen", ...Array.from(new Set(companies.map(c => c.industry)))], [companies]);
@@ -99,7 +111,7 @@ export default function CrmApp({ user }: { user: SessionUser }) {
   async function addCompany(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
-    const next: Company = { id: Date.now(), name: String(data.get("name")), city: String(data.get("city")), address: String(data.get("address")), distance: Number(data.get("distance")), industry: String(data.get("industry")), employees: String(data.get("employees")), phone: String(data.get("phone")), email: String(data.get("email")), website: String(data.get("website")), manager: String(data.get("manager")), stage: "Neu gefunden", priority: "B", owner: firstName, nextAction: "Daten prüfen und qualifizieren", nextDate: "2026-07-28", source: "Manuell", notes: "", originCity: originCity === ALL_CITIES ? DEFAULT_ORIGIN_CITY : originCity };
+    const next: Company = { id: Date.now(), name: String(data.get("name")), city: String(data.get("city")), address: String(data.get("address")), distance: Number(data.get("distance")), industry: String(data.get("industry")), employees: String(data.get("employees")), phone: String(data.get("phone")), email: String(data.get("email")), website: String(data.get("website")), manager: String(data.get("manager")), stage: "Neu gefunden", priority: "B", owner: firstName, nextAction: "Daten prüfen und qualifizieren", nextDate: "2026-07-28", source: "Manuell", notes: "", originCity: originCity === ALL_CITIES ? DEFAULT_ORIGIN_CITY : originCity, highlight: "", highlightSourceUrl: "", highlightGeneratedAt: null, email1Subject: "", email1Body: "", email1GeneratedAt: null, email2Subject: "", email2Body: "", email2GeneratedAt: null };
     setCompanies(old => [next, ...old]); setShowAdd(false); setNotice("Unternehmen wurde angelegt");
     try { const r = await api("/api/companies", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(next) }); if (r.ok) { const d = await r.json(); setCompanies(old => old.map(c => c.id === next.id ? d.company : c)); if (notionConfigured) api("/api/sync/notion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId: d.company.id }) }).catch(()=>{}); } } catch {}
     setTimeout(() => setNotice(""), 2800);
@@ -119,6 +131,48 @@ export default function CrmApp({ user }: { user: SessionUser }) {
       setNotice(result.message || "Notion wurde synchronisiert");
     } catch (error) { setNotice(error instanceof Error ? error.message : "Notion-Synchronisation fehlgeschlagen"); }
     finally { setNotionSyncing(false); setTimeout(() => setNotice(""), 4500); }
+  }
+
+  async function researchHighlight(company: Company) {
+    setConfirmResearch(false);
+    setHighlightLoading(company.id);
+    try {
+      const response = await api(`/api/companies/${company.id}/research-highlight`, { method: "POST" });
+      const result = await response.json() as { message?: string; company?: Company };
+      if (!response.ok || !result.company) throw new Error(result.message || "Recherche konnte nicht abgeschlossen werden");
+      setCompanies(old => old.map(c => c.id === company.id ? result.company! : c));
+      setSelected(sel => sel && sel.id === company.id ? result.company! : sel);
+      setEmailDrafts({});
+      setNotice("Besonderheit gefunden, E-Mail-Entwürfe erstellt");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Recherche konnte nicht abgeschlossen werden");
+    } finally {
+      setHighlightLoading(null); setTimeout(() => setNotice(""), 4500);
+    }
+  }
+
+  function handleResearchClick(company: Company) {
+    if (company.highlight && !confirmResearch) { setConfirmResearch(true); return; }
+    researchHighlight(company);
+  }
+
+  async function saveEmail(company: Company, n: 1 | 2, subject: string, body: string) {
+    const patch = n === 1 ? { email1Subject: subject, email1Body: body } : { email2Subject: subject, email2Body: body };
+    const updated = { ...company, ...patch };
+    setCompanies(old => old.map(c => c.id === company.id ? updated : c));
+    setSelected(sel => sel && sel.id === company.id ? updated : sel);
+    setSavingEmail(n);
+    try {
+      const response = await api(`/api/companies/${company.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+      if (!response.ok) throw new Error("Speichern fehlgeschlagen");
+      if (notionConfigured) api("/api/sync/notion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ companyId: company.id }) }).catch(() => {});
+      setEmailDrafts(d => { const next = { ...d }; delete next[n === 1 ? "email1Subject" : "email2Subject"]; delete next[n === 1 ? "email1Body" : "email2Body"]; return next; });
+      setNotice(`E-Mail ${n} gespeichert`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Speichern fehlgeschlagen");
+    } finally {
+      setSavingEmail(null); setTimeout(() => setNotice(""), 2800);
+    }
   }
 
   async function startResearch(e: FormEvent<HTMLFormElement>) {
@@ -210,7 +264,40 @@ export default function CrmApp({ user }: { user: SessionUser }) {
       </section>
     </main>
 
-    {selected && <div className="modal-backdrop" onMouseDown={()=>setSelected(null)}><aside className="drawer" onMouseDown={e=>e.stopPropagation()}><button className="close" onClick={()=>setSelected(null)}>×</button><div className="company-hero"><span>{initials(selected.name)}</span><div><small>{selected.industry}</small><h2>{selected.name}</h2><p>⌖ {selected.address}</p></div></div><div className="detail-grid"><div><small>GESCHÄFTSFÜHRUNG</small><strong>{selected.manager}</strong></div><div><small>GRÖSSE</small><strong>{selected.employees} Mitarbeiter</strong></div><div><small>TELEFON</small><a href={`tel:${selected.phone}`}>{selected.phone}</a></div><div><small>E-MAIL</small><a href={`mailto:${selected.email}`}>{selected.email}</a></div></div><hr/><label className="field"><span>Funnel-Stufe</span><select value={selected.stage} onChange={e=>updateStage(selected,e.target.value)}>{stages.map(s=><option key={s}>{s}</option>)}</select></label><div className="next-box"><small>NÄCHSTER SCHRITT · {fmtDate(selected.nextDate)}</small><strong>{selected.nextAction}</strong><span>Zuständig: {selected.owner}</span></div><div className="notes"><small>NOTIZEN</small><p>{selected.notes||"Noch keine Notizen vorhanden."}</p></div><div className="source">Datenquelle: {selected.source} · Entfernung {selected.distance} km ab {selected.originCity}</div><button className="primary wide" onClick={()=>updateStage(selected, stages[Math.min(stages.length-1,stages.indexOf(selected.stage)+1)])}>Als nächsten Schritt markieren →</button></aside></div>}
+    {selected && <div className="modal-backdrop" onMouseDown={()=>setSelected(null)}><aside className="drawer" onMouseDown={e=>e.stopPropagation()}><button className="close" onClick={()=>setSelected(null)}>×</button><div className="company-hero"><span>{initials(selected.name)}</span><div><small>{selected.industry}</small><h2>{selected.name}</h2><p>⌖ {selected.address}</p></div></div><div className="detail-grid"><div><small>GESCHÄFTSFÜHRUNG</small><strong>{selected.manager}</strong></div><div><small>GRÖSSE</small><strong>{selected.employees} Mitarbeiter</strong></div><div><small>TELEFON</small><a href={`tel:${selected.phone}`}>{selected.phone}</a></div><div><small>E-MAIL</small><a href={`mailto:${selected.email}`}>{selected.email}</a></div></div><hr/><label className="field"><span>Funnel-Stufe</span><select value={selected.stage} onChange={e=>updateStage(selected,e.target.value)}>{stages.map(s=><option key={s}>{s}</option>)}</select></label><div className="next-box"><small>NÄCHSTER SCHRITT · {fmtDate(selected.nextDate)}</small><strong>{selected.nextAction}</strong><span>Zuständig: {selected.owner}</span></div><div className="notes"><small>NOTIZEN</small><p>{selected.notes||"Noch keine Notizen vorhanden."}</p></div>
+
+          <div className="outreach-panel">
+            <div className="outreach-head">
+              <small>BESONDERHEIT &amp; EINLADUNG</small>
+              <button type="button" className="secondary" disabled={highlightLoading === selected.id} onClick={() => handleResearchClick(selected)}>
+                {highlightLoading === selected.id ? "Wird recherchiert …" : selected.highlight ? "✦ Erneut recherchieren" : "✦ Besonderheit recherchieren"}
+              </button>
+            </div>
+            {confirmResearch && <div className="confirm-inline"><span>Vorhandene Entwürfe werden ersetzt – fortfahren?</span><button className="primary" onClick={() => researchHighlight(selected)}>Ja</button><button className="secondary" onClick={() => setConfirmResearch(false)}>Abbrechen</button></div>}
+            {selected.highlight
+              ? <div className="highlight-box"><p>{selected.highlight}</p>{selected.highlightSourceUrl && <a href={selected.highlightSourceUrl} target="_blank" rel="noreferrer">Quelle ↗</a>}</div>
+              : <p className="muted">Noch keine Recherche durchgeführt.</p>}
+
+            {selected.email1Subject && <div className="email-draft">
+              <small>E-MAIL 1 · EINLADUNG{selected.email1GeneratedAt && <em> · entworfen am {fmtDate(selected.email1GeneratedAt)}</em>}</small>
+              <input value={emailDrafts.email1Subject ?? selected.email1Subject} onChange={e => setEmailDrafts(d => ({ ...d, email1Subject: e.target.value }))}/>
+              <textarea rows={8} value={emailDrafts.email1Body ?? selected.email1Body} onChange={e => setEmailDrafts(d => ({ ...d, email1Body: e.target.value }))}/>
+              <div className="outreach-actions">
+                {(emailDrafts.email1Subject !== undefined || emailDrafts.email1Body !== undefined) && <button className="secondary" disabled={savingEmail === 1} onClick={() => saveEmail(selected, 1, emailDrafts.email1Subject ?? selected.email1Subject, emailDrafts.email1Body ?? selected.email1Body)}>{savingEmail === 1 ? "Speichert …" : "Speichern"}</button>}
+              </div>
+            </div>}
+
+            {selected.email2Subject && <div className="email-draft">
+              <small>E-MAIL 2 · NACHFASSEN{selected.email2GeneratedAt && <em> · entworfen am {fmtDate(selected.email2GeneratedAt)}</em>}</small>
+              <input value={emailDrafts.email2Subject ?? selected.email2Subject} onChange={e => setEmailDrafts(d => ({ ...d, email2Subject: e.target.value }))}/>
+              <textarea rows={5} value={emailDrafts.email2Body ?? selected.email2Body} onChange={e => setEmailDrafts(d => ({ ...d, email2Body: e.target.value }))}/>
+              <div className="outreach-actions">
+                {(emailDrafts.email2Subject !== undefined || emailDrafts.email2Body !== undefined) && <button className="secondary" disabled={savingEmail === 2} onClick={() => saveEmail(selected, 2, emailDrafts.email2Subject ?? selected.email2Subject, emailDrafts.email2Body ?? selected.email2Body)}>{savingEmail === 2 ? "Speichert …" : "Speichern"}</button>}
+              </div>
+            </div>}
+          </div>
+
+          <div className="source">Datenquelle: {selected.source} · Entfernung {selected.distance} km ab {selected.originCity}</div><button className="primary wide" onClick={()=>updateStage(selected, stages[Math.min(stages.length-1,stages.indexOf(selected.stage)+1)])}>Als nächsten Schritt markieren →</button></aside></div>}
 
     {showAdd && <div className="modal-backdrop" onMouseDown={()=>setShowAdd(false)}><form className="add-modal" onSubmit={addCompany} onMouseDown={e=>e.stopPropagation()}><button type="button" className="close" onClick={()=>setShowAdd(false)}>×</button><p className="eyebrow">NEUER MARKTKONTAKT</p><h2>Unternehmen hinzufügen</h2><div className="form-grid"><label><span>Unternehmensname *</span><input name="name" required/></label><label><span>Branche *</span><input name="industry" required/></label><label><span>Ort *</span><input name="city" required/></label><label><span>Entfernung in km *</span><input name="distance" type="number" min="0" required/></label><label className="span2"><span>Adresse</span><input name="address"/></label><label><span>Geschäftsführung</span><input name="manager"/></label><label><span>Mitarbeiter</span><select name="employees"><option>10–19</option><option>20–49</option><option>50–99</option><option>100–249</option></select></label><label><span>Telefon</span><input name="phone" type="tel"/></label><label><span>E-Mail</span><input name="email" type="email"/></label><label className="span2"><span>Website</span><input name="website"/></label></div><div className="form-actions"><button type="button" className="secondary" onClick={()=>setShowAdd(false)}>Abbrechen</button><button className="primary">Unternehmen anlegen</button></div></form></div>}
     {showResearch && <div className="modal-backdrop centered" onMouseDown={()=>setShowResearch(false)}><form className="research-modal" onSubmit={startResearch} onMouseDown={e=>e.stopPropagation()}><button type="button" className="close" onClick={()=>setShowResearch(false)}>×</button><div className="research-title"><span>✦</span><div><p className="eyebrow">DEEP SEARCH · 10 NEUE KONTAKTE</p><h2>Neue Unternehmen recherchieren</h2><p>Definieren Sie die Zielgruppe. Gefundene Unternehmen werden geprüft, gegen Dubletten abgeglichen und als „Neu gefunden“ gespeichert.</p></div></div><div className="form-grid"><label><span>Branche *</span><input name="industry" placeholder="z. B. Maschinenbau" required/></label><label><span>Ausgangsstadt *</span><select name="originCity" defaultValue={originCity === ALL_CITIES ? DEFAULT_ORIGIN_CITY : originCity}>{GERMAN_CITIES.map(c=><option key={c} value={c}>{c}</option>)}</select></label><label><span>Umkreis *</span><select name="radius" defaultValue={radius}>{[10,20,30,40,50,60,70,80,90,100].map(r=><option key={r} value={r}>{r} km</option>)}</select></label><label><span>Unternehmensgröße *</span><select name="employees"><option>10–19 Mitarbeiter</option><option>20–49 Mitarbeiter</option><option>50–99 Mitarbeiter</option><option>100–249 Mitarbeiter</option><option>10–249 Mitarbeiter</option></select></label><label><span>Rechtsform / Firmierung</span><select name="legalForm"><option>Alle Rechtsformen</option><option>GmbH</option><option>GmbH & Co. KG</option><option>KG</option><option>AG</option><option>e.K.</option></select></label><label className="span2"><span>Regionaler Schwerpunkt</span><input name="region" defaultValue={(originCity === ALL_CITIES ? DEFAULT_ORIGIN_CITY : originCity) === DEFAULT_ORIGIN_CITY ? "Nürnberg, Fürth und Erlangen" : `${originCity === ALL_CITIES ? DEFAULT_ORIGIN_CITY : originCity} und Umgebung`}/></label></div><div className="research-info"><strong>Was die Recherche übernimmt</strong><span>10 neue, möglichst vollständige Datensätze · Firmenname · Anschrift · Branche · Größe · Website · Telefon · Geschäftsführung · Quellenangabe</span></div>{lastResearch && <p className="last-research">Letzter Auftrag: {lastResearch.industry}, {lastResearch.radius} km · Status: {lastResearch.status}</p>}<div className="form-actions"><button type="button" className="secondary" onClick={()=>setShowResearch(false)}>Abbrechen</button><button className="primary" disabled={researching}>{researching ? "Recherche wird angelegt …" : "✦ Tiefensuche starten"}</button></div></form></div>}

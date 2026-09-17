@@ -29,6 +29,15 @@ export const companies = sqliteTable("companies", {
   notionPageId: text("notion_page_id"), notionSyncedAt: text("notion_synced_at"), notionSyncError: text("notion_sync_error"),
   notionLastEditedAt: text("notion_last_edited_at"),
   originCity: text("origin_city").notNull().default("Nürnberg"),
+  highlight: text("highlight").notNull().default(""),
+  highlightSourceUrl: text("highlight_source_url").notNull().default(""),
+  highlightGeneratedAt: text("highlight_generated_at"),
+  email1Subject: text("email1_subject").notNull().default(""),
+  email1Body: text("email1_body").notNull().default(""),
+  email1GeneratedAt: text("email1_generated_at"),
+  email2Subject: text("email2_subject").notNull().default(""),
+  email2Body: text("email2_body").notNull().default(""),
+  email2GeneratedAt: text("email2_generated_at"),
   createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
   updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP")
 });
