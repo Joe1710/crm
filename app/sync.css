@@ -194,8 +194,15 @@
 
 .outreach-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 8px;
+  flex-wrap: wrap;
+}
+
+.outreach-actions span {
+  font-size: 10.5px;
+  color: var(--muted);
 }
 
 .outreach-actions button {
