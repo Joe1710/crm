@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { LogLevel, WorkerMailer } from "worker-mailer";
+import { DSGVO_NOTICE_HTML, DSGVO_NOTICE_TEXT, SIGNATURE_HTML, SIGNATURE_TEXT } from "./email-footer";
 
 type MailerRuntime = {
   SMTP_HOST?: string;
@@ -46,6 +47,31 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string, status
   });
 }
 
+function escapeHtml(value: string) {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function paragraphsToHtml(body: string) {
+  return body.split(/\n{2,}/).map(block =>
+    `<p style="margin:0 0 1em;">${escapeHtml(block).replace(/\n/g, "<br>")}</p>`
+  ).join("");
+}
+
+function buildEmailContent(body: string) {
+  const text = `${body}\n\n${SIGNATURE_TEXT}\n\n--\n${DSGVO_NOTICE_TEXT}`;
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#18233d;">
+${paragraphsToHtml(body)}
+<div style="margin-top:1.5em;">
+${SIGNATURE_HTML}
+</div>
+<hr style="border:none;border-top:1px solid #e7e8ed;margin:20px 0 12px;">
+<div style="font-size:10.5px;line-height:1.5;color:#8a91a0;">
+${DSGVO_NOTICE_HTML}
+</div>
+</div>`;
+  return { text, html };
+}
+
 export async function sendMail(input: { to: string; subject: string; text: string }) {
   const c = config();
   if (!c.host || !c.user || !c.password) {
@@ -54,6 +80,7 @@ export async function sendMail(input: { to: string; subject: string; text: strin
 
   const to = c.testAddress || input.to;
   const subject = c.testAddress ? `[TEST] ${input.subject}` : input.subject;
+  const { text, html } = buildEmailContent(input.text);
 
   try {
     await withTimeout((async () => {
@@ -67,7 +94,7 @@ export async function sendMail(input: { to: string; subject: string; text: strin
         logLevel: LogLevel.ERROR
       });
       try {
-        await mailer.send({ from: { name: c.fromName, email: c.fromEmail! }, to, subject, text: input.text });
+        await mailer.send({ from: { name: c.fromName, email: c.fromEmail! }, to, subject, text, html });
       } finally {
         await mailer.close();
       }
