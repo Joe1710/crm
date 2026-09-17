@@ -43,6 +43,13 @@
       "when": 1789638644563,
       "tag": "0005_skinny_starbolt",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1789640123077,
+      "tag": "0006_wealthy_falcon",
+      "breakpoints": true
     }
   ]
 }
