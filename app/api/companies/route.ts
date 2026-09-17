@@ -2,6 +2,7 @@ import { desc } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { companies } from "../../../db/schema";
 import { getSessionUser } from "../../../lib/session-auth";
+import { DEFAULT_ORIGIN_CITY, isValidOriginCity } from "../../../lib/german-cities";
 
 export async function GET() {
   if (!(await getSessionUser())) return Response.json({ error: "Nicht angemeldet" }, { status: 401 });
@@ -13,12 +14,14 @@ export async function POST(request: Request) {
   if (!(await getSessionUser())) return Response.json({ error: "Nicht angemeldet" }, { status: 401 });
   try {
     const body = await request.json() as Record<string, unknown>;
+    const requestedOriginCity = String(body.originCity ?? "");
     const [company] = await getDb().insert(companies).values({
       name: String(body.name ?? "").trim(), city: String(body.city ?? "").trim(), address: String(body.address ?? ""),
       distance: Number(body.distance ?? 0), industry: String(body.industry ?? "Sonstige"), employees: String(body.employees ?? ""),
       phone: String(body.phone ?? ""), email: String(body.email ?? ""), website: String(body.website ?? ""), manager: String(body.manager ?? ""),
       stage: String(body.stage ?? "Neu gefunden"), priority: String(body.priority ?? "B"), owner: String(body.owner ?? "Ivan"),
       nextAction: String(body.nextAction ?? "Daten prüfen und qualifizieren"), nextDate: String(body.nextDate ?? ""), source: String(body.source ?? "Manuell"), notes: String(body.notes ?? ""),
+      originCity: isValidOriginCity(requestedOriginCity) ? requestedOriginCity : DEFAULT_ORIGIN_CITY,
       updatedAt: new Date().toISOString()
     }).returning();
     return Response.json({ company }, { status: 201 });

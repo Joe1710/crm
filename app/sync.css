@@ -1,3 +1,29 @@
+.city-switch {
+  display: block;
+  margin: 0 0 20px;
+  padding: 0 8px;
+}
+
+.city-switch span {
+  display: block;
+  color: #8f9ab3;
+  font-size: 9px;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.city-switch select {
+  width: 100%;
+  background: #1c2740;
+  color: #fff;
+  border: 1px solid #2e3b5a;
+  border-radius: 7px;
+  padding: 8px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
 .sync-dot.waiting {
   background: #f3a43e;
   box-shadow: 0 0 0 4px #f3a43e20;

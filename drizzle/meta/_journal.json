@@ -36,6 +36,13 @@
       "when": 1789337387446,
       "tag": "0004_chemical_daimon_hellstrom",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1789638644563,
+      "tag": "0005_skinny_starbolt",
+      "breakpoints": true
     }
   ]
 }

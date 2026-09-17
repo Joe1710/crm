@@ -28,6 +28,7 @@ export const companies = sqliteTable("companies", {
   source: text("source").notNull().default("Manuell"), notes: text("notes").notNull().default(""),
   notionPageId: text("notion_page_id"), notionSyncedAt: text("notion_synced_at"), notionSyncError: text("notion_sync_error"),
   notionLastEditedAt: text("notion_last_edited_at"),
+  originCity: text("origin_city").notNull().default("Nürnberg"),
   createdAt: text("created_at").notNull().default("CURRENT_TIMESTAMP"),
   updatedAt: text("updated_at").notNull().default("CURRENT_TIMESTAMP")
 });
@@ -39,6 +40,7 @@ export const researchJobs = sqliteTable("research_jobs", {
   employees: text("employees").notNull(),
   legalForm: text("legal_form").notNull().default("Alle Rechtsformen"),
   region: text("region").notNull().default("Nürnberg, Fürth und Erlangen"),
+  originCity: text("origin_city").notNull().default("Nürnberg"),
   resultLimit: integer("result_limit").notNull().default(10),
   status: text("status").notNull().default("Datenquelle ausstehend"),
   provider: text("provider").notNull().default("Nicht verbunden"),
