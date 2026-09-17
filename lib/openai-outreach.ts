@@ -74,6 +74,12 @@ function outputText(response: OpenAIResponse) {
     .join("");
 }
 
+function stripMarkdownLinks(text: string) {
+  // Websuche-Zitate kommen manchmal trotz Anweisung als Markdown-Link zurück, z. B. "([domain.de](https://...))".
+  // Die E-Mail wird als reiner Text versendet, daher hier defensiv auf den sichtbaren Linktext reduzieren.
+  return text.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+}
+
 function validWebUrl(value: string) {
   try {
     const url = new URL(value);
@@ -105,7 +111,8 @@ Schritt 1 – Besonderheit recherchieren:
 Schritt 2 – Zwei E-Mails entwerfen (Deutsch, Sie-Anrede, professionell und warm, keine Marketing-Floskeln):
 - E-Mail 1 (Einladung, ca. 150–200 Wörter): geht konkret auf die gefundene Besonderheit ein, erklärt kurz und spezifisch, warum das KI Masterclass Speed-Dating am ${SPEED_DATING_DATE} in Nürnberg gerade für dieses Unternehmen relevant ist, enthält den Link ${SPEED_DATING_URL} zur Anmeldung, endet mit einer freundlichen Grußformel unterschrieben mit "${input.ownerName}". Wenn keine Besonderheit gefunden wurde, geht die E-Mail stattdessen allgemein auf die Branche "${input.industry}" ein.
 - E-Mail 2 (Nachfassen, ca. 60–80 Wörter): kurze, freundliche Erinnerung, verweist darauf dass bereits eine E-Mail versendet wurde, enthält denselben Link, unterschrieben mit "${input.ownerName}".
-- email1Subject/email2Subject sind kurze, konkrete Betreffzeilen (keine Klickköder-Formulierungen).`;
+- email1Subject/email2Subject sind kurze, konkrete Betreffzeilen (keine Klickköder-Formulierungen).
+- WICHTIG: Die E-Mails werden als reiner Text versendet, nicht als HTML. Schreibe daher NIEMALS Markdown-Links wie "([domain.de](https://...))" oder "[Text](URL)" in email1Body/email2Body. Nenne eine Quelle, falls überhaupt nötig, nur als ausgeschriebenen Klartext-Satz ohne Klammern oder eckige Klammern. Die einzige URL, die in den E-Mail-Texten vorkommen darf, ist ${SPEED_DATING_URL} als reiner Text ohne Formatierung.`;
 
   let response: Response;
   try {
@@ -160,9 +167,9 @@ Schritt 2 – Zwei E-Mails entwerfen (Deutsch, Sie-Anrede, professionell und war
   }
 
   const email1Subject = String(parsed.email1Subject || "").trim();
-  const email1Body = String(parsed.email1Body || "").trim();
+  const email1Body = stripMarkdownLinks(String(parsed.email1Body || "").trim());
   const email2Subject = String(parsed.email2Subject || "").trim();
-  const email2Body = String(parsed.email2Body || "").trim();
+  const email2Body = stripMarkdownLinks(String(parsed.email2Body || "").trim());
   if (!email1Subject || !email1Body || !email2Subject || !email2Body) {
     throw new OutreachApiError("Die E-Mail-Entwürfe konnten nicht vollständig erzeugt werden. Bitte erneut versuchen.", 502);
   }
