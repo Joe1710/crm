@@ -13,5 +13,8 @@
       "database_name": "ki-masterclass-crm-db",
       "database_id": "157083ee-d2fd-420f-9d42-f1a2b6fd8fd7"
     }
+  ],
+  "routes": [
+    { "pattern": "crm.ki-masterclass.com", "custom_domain": true }
   ]
 }
