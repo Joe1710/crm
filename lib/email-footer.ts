@@ -24,9 +24,14 @@ export const SIGNATURE_HTML = `<p style="margin:0 0 1em;">Mit freundlichen Grü�
 <p style="margin:0 0 4px;">HRB 43013 · Amtsgericht Leipzig<br>USt-IdNr. DE311286747</p>
 <p style="margin:0;"><a href="mailto:jk@ki-masterclass.com" style="color:inherit;">jk@ki-masterclass.com</a> · <a href="https://www.ki-masterclass.com" style="color:inherit;">www.ki-masterclass.com</a></p>`;
 
-// Fester Einladungsteil (Aufzählung, Dauer, Kostenfrei-Hinweis, Link, Schlusssatz) -- die KI schreibt nur noch die
-// persönliche Eröffnung davor; das hier wird beim Erzeugen des Entwurfs unverändert angehängt, damit es nie driftet.
-export const EVENT_PITCH_TEXT = `Deshalb möchte ich Sie herzlich zu unserem KI Speed-Dating für den Mittelstand am 11. November 2026 in Nürnberg einladen. In nur 3 Stunden erleben Sie:
+// Fester Einladungsteil (Save-the-date, Aufzählung, Dauer, Kostenfrei-Hinweis, Link, Schlusssatz) -- die KI schreibt
+// nur noch die persönliche, zugespitzte Eröffnung davor; das hier wird beim Erzeugen des Entwurfs unverändert
+// angehängt, damit Termin/Programm nie driften. TODO: Veranstaltungsort (Hotelname) ergänzen, sobald bestätigt.
+export const EVENT_PITCH_TEXT = `Das dürfen Sie sich nicht entgehen lassen. Save the date am 11. November 2026 in Nürnberg:
+
+KI Speed-Dating für den Mittelstand
+
+In nur 3 Stunden erleben Sie:
 
 ✅ Konkrete KI-Anwendungsfälle aus Ihrer Branche und dem Mittelstand
 ✅ Direkten Austausch mit KI-Experten – ohne lange Vorträge

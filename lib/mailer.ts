@@ -10,6 +10,7 @@ type MailerRuntime = {
   SMTP_FROM_EMAIL?: string;
   MAIL_FROM_NAME?: string;
   MAIL_TEST_MODE_ADDRESS?: string;
+  MAIL_BCC_ADDRESS?: string;
 };
 
 export class MailerApiError extends Error {
@@ -31,7 +32,8 @@ function config() {
     password,
     fromEmail: runtime.SMTP_FROM_EMAIL?.trim() || user,
     fromName: runtime.MAIL_FROM_NAME?.trim() || "KI Masterclass",
-    testAddress: runtime.MAIL_TEST_MODE_ADDRESS?.trim()
+    testAddress: runtime.MAIL_TEST_MODE_ADDRESS?.trim(),
+    bccAddress: runtime.MAIL_BCC_ADDRESS?.trim() || "jk@ki-masterclass.com"
   };
 }
 
@@ -94,7 +96,9 @@ export async function sendMail(input: { to: string; subject: string; text: strin
         logLevel: LogLevel.ERROR
       });
       try {
-        await mailer.send({ from: { name: c.fromName, email: c.fromEmail! }, to, subject, text, html });
+        // Im Testmodus geht die Mail ohnehin schon an die BCC-Adresse -- keine doppelte Kopie ins selbe Postfach.
+        const bcc = c.testAddress ? undefined : c.bccAddress;
+        await mailer.send({ from: { name: c.fromName, email: c.fromEmail! }, to, bcc, subject, text, html });
       } finally {
         await mailer.close();
       }
