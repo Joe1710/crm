@@ -229,7 +229,7 @@ export default function CrmApp({ user }: { user: SessionUser }) {
 
   return <div className="app-shell">
     <aside className="sidebar">
-      <div className="brand"><span className="brand-mark">KI</span><div><strong>MASTERCLASS</strong><small>REGION NÜRNBERG</small></div></div>
+      <div className="brand"><span className="brand-mark">KI</span><div><strong>MASTERCLASS</strong><small>REGION {originCity === ALL_CITIES ? "ALLE STANDORTE" : originCity.toUpperCase()}</small></div></div>
       <label className="city-switch"><span>Ausgangsstadt</span><select value={originCity} onChange={e => setOriginCity(e.target.value)}><option value={ALL_CITIES}>{ALL_CITIES}</option>{GERMAN_CITIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
       <nav aria-label="Hauptnavigation">
         {["Übersicht", "Unternehmen", "Sales Funnel", "Aufgaben", "Veranstaltungen"].map((item, i) => <button key={item} className={view === item ? "active" : ""} onClick={() => setView(item)}><span>{["⌂", "▦", "▽", "✓", "◇"][i]}</span>{item}{item === "Aufgaben" && <em>4</em>}</button>)}

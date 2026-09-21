@@ -26,8 +26,10 @@ export const SIGNATURE_HTML = `<p style="margin:0 0 1em;">Mit freundlichen Grü�
 
 // Fester Einladungsteil (Save-the-date, Aufzählung, Dauer, Kostenfrei-Hinweis, Link, Schlusssatz) -- die KI schreibt
 // nur noch die persönliche, zugespitzte Eröffnung davor; das hier wird beim Erzeugen des Entwurfs unverändert
-// angehängt, damit Termin/Programm nie driften. TODO: Veranstaltungsort (Hotelname) ergänzen, sobald bestätigt.
-export const EVENT_PITCH_TEXT = `Das dürfen Sie sich nicht entgehen lassen. Save the date am 11. November 2026 in Nürnberg:
+// angehängt, damit Termin/Programm nie driften. Die Stadt richtet sich nach der Ausgangsstadt der Recherche, da das
+// Speed-Dating künftig auch in anderen Städten stattfindet. TODO: Veranstaltungsort (Hotelname) ergänzen, sobald bestätigt.
+export function eventPitchText(city: string) {
+  return `Das dürfen Sie sich nicht entgehen lassen. Save the date am 11. November 2026 in ${city}:
 
 KI Speed-Dating für den Mittelstand
 
@@ -42,7 +44,8 @@ https://www.speed-date-ki-mittelstand.ki-masterclass.com
 
 Ich bin überzeugt: Diese 3 Stunden werden Ihnen neue Perspektiven eröffnen und Ihnen zeigen, wie Sie KI gewinnbringend in Ihrem Unternehmen nutzen können – praxisnah, ohne Umwege, sofort umsetzbar.
 
-Ich würde mich freuen, Sie am 11.11. in Nürnberg begrüßen zu dürfen!`;
+Ich würde mich freuen, Sie am 11.11. in ${city} begrüßen zu dürfen!`;
+}
 
 // DSGVO-Pflichtinformation nach Art. 12, 13 DSGVO für den Erstkontakt -- wörtlich, nicht durch die KI umformulierbar.
 export const DSGVO_NOTICE_TEXT = `Pflichtinformationen gemäß Artikel 13 DSGVO

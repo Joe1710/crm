@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { EVENT_PITCH_TEXT } from "./email-footer";
+import { eventPitchText } from "./email-footer";
 
 const SPEED_DATING_URL = "https://www.speed-date-ki-mittelstand.ki-masterclass.com";
 const SPEED_DATING_DATE = "11.11.";
@@ -12,6 +12,7 @@ export type OutreachInput = {
   manager: string;
   employees: string;
   ownerName: string;
+  originCity: string;
 };
 
 export type OutreachResult = {
@@ -126,7 +127,7 @@ Stil-Vorbild für die Eröffnung von email1Intro (Struktur übernehmen, NICHT w�
 "Ihr aktueller Hinweis zu den Preisanpassungen 2026 zeigt, dass Sie Ihre Abläufe und Rahmenbedingungen transparent halten. Besser und angenehmer für Unternehmer ist es, keine Erhöhungen vornehmen zu müssen. Wir lieben unsere Kunden. Nur die gegenwärtige Situation lässt uns keine Wahl. Wirklich keine? Doch, mit eigenen KI-Lösungen Mehrwert für Ihr Unternehmen schaffen. Sie selbst oder Ihre qualifizierten Mitarbeiter."
 Das Prinzip dahinter: die gefundene Besonderheit wird NICHT als plakative Tatsachenmeldung präsentiert (vermeide Eröffnungssätze wie "Ich habe gesehen, dass..." oder "Auf Ihrer Website ist zu sehen, dass..."). Stattdessen wird sie in eine kurze Beobachtung eingewebt, die zu einer knappen, zugespitzten Wendung führt – ein bewusster Kontrast oder eine kurze rhetorische Frage, notfalls auch ein Ein-Wort-Satz zur Betonung –, die sofort aufgelöst wird und direkt zur Kernbotschaft (Mittelstand, Eigenständigkeit, KI selbst gestalten statt diktiert bekommen) überleitet. Der Ton ist selbstbewusst, pointiert und einladend, mit ein wenig Schwung ("Schmackes") – kein drögter Businessstil, aber auch keine platte Werbesprache.
 - email1Intro (Anrede + ca. 90–140 Wörter Fließtext, kurze Sätze und Absätze sind ausdrücklich erwünscht): Beginnt nach der Anrede mit der eingewebten, zugespitzten Eröffnung wie oben beschrieben, löst die Spannung auf und leitet inhaltlich zur Kernbotschaft über. Formuliere NICHT die Einladung selbst, das Datum, den Link oder Sätze wie "Deshalb möchte ich Sie einladen" oder "Das dürfen Sie sich nicht entgehen lassen" aus – das folgt automatisch danach, dein letzter Satz soll inhaltlich flüssig dorthin überleiten können. Wenn keine Besonderheit gefunden wurde, geht die Eröffnung stattdessen pointiert auf eine typische Herausforderung der Branche "${input.industry}" ein.
-- email2Body (Anrede + Nachfassen, ca. 80–110 Wörter Fließtext): kurze, freundliche Erinnerung, verweist darauf dass bereits eine E-Mail versendet wurde, greift die Kernbotschaft in einem Satz nochmal auf, lädt nochmal knapp zum KI Masterclass Speed-Dating am ${SPEED_DATING_DATE} in Nürnberg ein und enthält den Link ${SPEED_DATING_URL}. Endet inhaltlich, OHNE eine Grußformel oder Signatur anzuhängen – das wird automatisch ergänzt.
+- email2Body (Anrede + Nachfassen, ca. 80–110 Wörter Fließtext): kurze, freundliche Erinnerung, verweist darauf dass bereits eine E-Mail versendet wurde, greift die Kernbotschaft in einem Satz nochmal auf, lädt nochmal knapp zum KI Masterclass Speed-Dating am ${SPEED_DATING_DATE} in ${input.originCity} ein und enthält den Link ${SPEED_DATING_URL}. Endet inhaltlich, OHNE eine Grußformel oder Signatur anzuhängen – das wird automatisch ergänzt.
 - email1Subject/email2Subject sind kurze, konkrete Betreffzeilen, die auf die Besonderheit oder das Unternehmen Bezug nehmen (keine Klickköder-Formulierungen).
 - WICHTIG: Die E-Mails werden serverseitig zusätzlich als HTML aufbereitet. Schreibe daher NIEMALS Markdown-Links wie "([domain.de](https://...))" oder "[Text](URL)" in email1Intro/email2Body. Nenne eine Quelle, falls überhaupt nötig, nur als ausgeschriebenen Klartext-Satz ohne Klammern oder eckige Klammern. Die einzige URL, die in email2Body vorkommen darf, ist ${SPEED_DATING_URL} als reiner Text ohne Formatierung. In email1Intro darf gar keine URL vorkommen.`;
 
@@ -191,7 +192,7 @@ Das Prinzip dahinter: die gefundene Besonderheit wird NICHT als plakative Tatsac
     throw new OutreachApiError("Die E-Mail-Entwürfe konnten nicht vollständig erzeugt werden. Bitte erneut versuchen.", 502);
   }
 
-  const email1Body = `${email1Intro}\n\n${EVENT_PITCH_TEXT}`;
+  const email1Body = `${email1Intro}\n\n${eventPitchText(input.originCity)}`;
 
   return { highlight, highlightSourceUrl: highlightSourceUrl || "", email1Subject, email1Body, email2Subject, email2Body };
 }

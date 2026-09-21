@@ -22,7 +22,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       website: company.website,
       manager: company.manager,
       employees: company.employees,
-      ownerName: user.name.split(" ")[0]
+      ownerName: user.name.split(" ")[0],
+      originCity: company.originCity
     });
     const now = new Date().toISOString();
     const [updated] = await db.update(companies).set({
