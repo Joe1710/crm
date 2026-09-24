@@ -9,6 +9,7 @@ export type SessionUser = {
   id: number;
   name: string;
   email: string;
+  role: string;
 };
 
 const SIGN_IN_PATH = "/login";
@@ -19,7 +20,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
   const db = getDb();
   const [row] = await db
-    .select({ userId: sessions.userId, expiresAt: sessions.expiresAt, name: users.name, email: users.email })
+    .select({ userId: sessions.userId, expiresAt: sessions.expiresAt, name: users.name, email: users.email, role: users.role })
     .from(sessions)
     .innerJoin(users, eq(users.id, sessions.userId))
     .where(eq(sessions.token, token))
@@ -28,13 +29,19 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   if (!row) return null;
   if (new Date(row.expiresAt).getTime() < Date.now()) return null;
 
-  return { id: row.userId, name: row.name, email: row.email };
+  return { id: row.userId, name: row.name, email: row.email, role: row.role };
 }
 
 export async function requireSessionUser(returnTo: string): Promise<SessionUser> {
   const user = await getSessionUser();
   if (user) return user;
   redirect(signInPath(returnTo));
+}
+
+export async function requireAdminUser(returnTo: string): Promise<SessionUser> {
+  const user = await requireSessionUser(returnTo);
+  if (user.role !== "admin") redirect("/");
+  return user;
 }
 
 export function signInPath(returnTo: string): string {
