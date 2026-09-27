@@ -10,6 +10,7 @@ export type OutreachCompany = {
 };
 
 export type OutreachProfile = {
+  senderName: string;
   bio: string;
   styleSamples: string[];
 };
@@ -73,6 +74,8 @@ export async function draftOutreachEmail(company: OutreachCompany, profile: Outr
 
   const prompt = `Formuliere eine kurze deutsche Erstkontakt-E-Mail an ein Unternehmen für die Akquisition der KI Masterclass.
 
+Name des Absenders: ${profile.senderName}
+
 Persönlicher Hintergrund des Absenders (in eigenen Worten, so einfließen lassen, dass er sich glaubwürdig vorstellt und zum Kern kommt):
 ${profile.bio.trim()}
 
@@ -92,6 +95,7 @@ Regeln:
 - Persönliche Vorstellung zuerst (kurz), dann direkt zum eigentlichen Anliegen kommen.
 - Erfinde keine Fakten über die Firma, die nicht oben angegeben sind.
 - Anrede nur mit echtem Namen, falls Geschäftsführung bekannt ist, sonst neutral ("Guten Tag,").
+- Grußformel am Ende mit dem echten Namen des Absenders unterschreiben, kein Platzhalter wie "[Ihr Name]".
 - subject: kurzer, konkreter Betreff. body: vollständiger E-Mail-Text inklusive Anrede und Grußformel.`;
 
   let response: Response;

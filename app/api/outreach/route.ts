@@ -29,6 +29,7 @@ export async function POST(request: Request) {
         notes: company.notes
       },
       {
+        senderName: sessionUser.name,
         bio: user?.bio ?? "",
         styleSamples: samples.map(s => s.content)
       }
