@@ -1,0 +1,92 @@
+.sync-dot.waiting {
+  background: #f3a43e;
+  box-shadow: 0 0 0 4px #f3a43e20;
+}
+
+.top-actions .notion-sync {
+  border: 1px solid #d9e2f7;
+  background: #f4f7fd;
+  color: #315da9;
+  border-radius: 7px;
+  padding: 8px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.top-actions .notion-sync:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+@media (max-width: 760px) {
+  .top-actions .notion-sync { display: none; }
+}
+
+.login-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper);
+  padding: 20px;
+}
+
+.login-card {
+  width: min(400px, 100%);
+}
+
+.settings-card {
+  width: min(560px, 100%);
+}
+
+.login-error {
+  background: #fff0ec;
+  color: #c0472a;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 11px;
+  margin: 0 0 16px;
+}
+
+.login-success {
+  background: #e5f6ef;
+  color: #247c5a;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 11px;
+  margin: 0 0 16px;
+}
+
+.user-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.user-link:hover {
+  text-decoration: underline;
+}
+
+.logout-form {
+  margin-left: auto;
+}
+
+.logout-form button {
+  border: 0;
+  background: none;
+  color: #8290aa;
+  font-size: 10px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.outreach-modal textarea {
+  width: 100%;
+  min-height: 220px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.outreach-modal input[name="subject"] {
+  width: 100%;
+}
