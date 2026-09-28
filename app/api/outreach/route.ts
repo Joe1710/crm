@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "../../../db";
-import { companies, styleSamples, users } from "../../../db/schema";
+import { companies, users } from "../../../db/schema";
 import { draftOutreachEmail, OutreachApiError } from "../../../lib/outreach-email";
 import { getSessionUser } from "../../../lib/session-auth";
 
@@ -17,9 +17,8 @@ export async function POST(request: Request) {
     if (!company) return Response.json({ message: "Unternehmen wurde nicht gefunden." }, { status: 404 });
 
     const [user] = await db.select().from(users).where(eq(users.id, sessionUser.id)).limit(1);
-    const samples = await db.select().from(styleSamples).where(eq(styleSamples.userId, sessionUser.id));
 
-    const draft = await draftOutreachEmail(
+    const draft = draftOutreachEmail(
       {
         name: company.name,
         city: company.city,
@@ -31,7 +30,7 @@ export async function POST(request: Request) {
       {
         senderName: sessionUser.name,
         bio: user?.bio ?? "",
-        styleSamples: samples.map(s => s.content)
+        styleSamples: []
       }
     );
 
