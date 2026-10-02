@@ -3,6 +3,8 @@ import { getDb } from "../../../db";
 import { companies, researchJobs } from "../../../db/schema";
 import { notionConfigured, syncCompanyToNotion } from "../../../lib/notion";
 import { ResearchApiError, researchCompanies, researchConfigured } from "../../../lib/openai-research";
+import { DEFAULT_ORIGIN_CITY, isValidOriginCity } from "../../../lib/german-cities";
+import { hasCompletePostalAddress, hasValidEmail } from "../../../lib/postal";
 import { getSessionUser } from "../../../lib/session-auth";
 
 export async function GET() {
@@ -21,12 +23,15 @@ export async function POST(request: Request) {
     if (!industry || radius < 10 || radius > 100) {
       return Response.json({ message: "Bitte Branche und einen Umkreis zwischen 10 und 100 km angeben." }, { status: 400 });
     }
+    const requestedCity = String(body.originCity ?? "");
+    const originCity = isValidOriginCity(requestedCity) ? requestedCity : DEFAULT_ORIGIN_CITY;
     const criteria = {
+      originCity,
       industry,
       radius,
       employees: String(body.employees ?? "10–249 Mitarbeiter"),
       legalForm: String(body.legalForm ?? "Alle Rechtsformen"),
-      region: String(body.region ?? "Nürnberg, Fürth und Erlangen")
+      region: String(body.region ?? "").trim() || `${originCity} und Umgebung`
     };
 
     const [job] = await db.insert(researchJobs).values({
@@ -43,7 +48,12 @@ export async function POST(request: Request) {
     const knownWebsites = new Set(existing.map(item => item.website.trim().toLocaleLowerCase("de")).filter(Boolean));
     const inserted = [];
 
+    let skippedWithoutContact = 0;
+    let letterOnly = 0;
     for (const candidate of found) {
+      // Kontaktweg: E-Mail ODER vollständige Postanschrift (Brief). Ohne beides kann nicht eingeladen werden.
+      const hasEmail = hasValidEmail(candidate.email);
+      if (!hasEmail && !hasCompletePostalAddress(candidate.address)) { skippedWithoutContact++; continue; }
       const normalizedName = candidate.name.trim().toLocaleLowerCase("de");
       const normalizedWebsite = candidate.website.trim().toLocaleLowerCase("de").replace(/\/$/, "");
       if (knownNames.has(normalizedName) || (normalizedWebsite && knownWebsites.has(normalizedWebsite))) continue;
@@ -55,19 +65,22 @@ export async function POST(request: Request) {
         industry: candidate.industry.trim() || industry,
         employees: candidate.employees || "Unbekannt",
         phone: candidate.phone.trim(),
-        email: candidate.email.trim(),
+        email: hasEmail ? candidate.email.trim() : "",
         website: candidate.website.trim(),
         manager: candidate.manager.trim(),
-        stage: "Neu gefunden",
+        stage: "Neu",
+        stageChangedAt: new Date().toISOString(),
+        originCity,
         priority: "B",
         owner: "Ivan",
-        nextAction: "Quellen prüfen und Entscheider qualifizieren",
+        nextAction: hasEmail ? "Quellen prüfen und Entscheider qualifizieren" : "Quellen prüfen – Brief per Post vorbereiten",
         nextDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-        source: candidate.sourceUrls.join(" | "),
-        notes: candidate.evidence.trim(),
+        source: [candidate.sourceUrls.join(" | "), candidate.evidence.trim() ? `Beleg: ${candidate.evidence.trim()}` : ""].filter(Boolean).join(" — "),
+        notes: "",
         updatedAt: new Date().toISOString()
       }).returning();
       inserted.push(company);
+      if (!hasEmail) letterOnly++;
       knownNames.add(normalizedName);
       if (normalizedWebsite) knownWebsites.add(normalizedWebsite);
     }
@@ -97,7 +110,7 @@ export async function POST(request: Request) {
       job: { ...job, status },
       companies: inserted,
       notion: { succeeded: notionSucceeded, failed: notionFailed },
-      message: `${inserted.length} reale Unternehmen wurden gespeichert${notionConfigured() ? `; ${notionSucceeded} davon nach Notion übertragen` : ""}.`
+      message: `${inserted.length} Unternehmen gespeichert${letterOnly ? ` (davon ${letterOnly} ohne E-Mail, aber mit vollständiger Postanschrift – für Briefversand gekennzeichnet)` : ""}${skippedWithoutContact ? `, ${skippedWithoutContact} ohne E-Mail und ohne vollständige Anschrift verworfen` : ""}${notionConfigured() ? `; ${notionSucceeded} nach Notion übertragen` : ""}.`
     }, { status: 201 });
   } catch (error) {
     if (jobId) await db.update(researchJobs).set({ status: "Fehlgeschlagen" }).where(eq(researchJobs.id, jobId)).catch(() => undefined);

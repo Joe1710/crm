@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PasswordField } from "../components/PasswordField";
 import { requireSessionUser } from "../../lib/session-auth";
 
 export default async function ChangePasswordPage({
@@ -18,14 +19,8 @@ export default async function ChangePasswordPage({
         {params.error === "short" && <p className="login-error">Das neue Passwort muss mindestens 10 Zeichen lang sein.</p>}
         {params.success && <p className="login-success">Passwort wurde geändert.</p>}
         <div className="form-grid">
-          <label className="span2">
-            <span>Aktuelles Passwort</span>
-            <input name="current_password" type="password" required autoFocus />
-          </label>
-          <label className="span2">
-            <span>Neues Passwort (mind. 10 Zeichen)</span>
-            <input name="new_password" type="password" minLength={10} required />
-          </label>
+          <PasswordField name="current_password" label="Aktuelles Passwort" autoFocus />
+          <PasswordField name="new_password" label="Neues Passwort (mind. 10 Zeichen)" minLength={10} />
         </div>
         <div className="form-actions">
           <Link href="/" className="secondary" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>Zurück</Link>

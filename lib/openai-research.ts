@@ -6,6 +6,7 @@ export type ResearchCriteria = {
   employees: string;
   legalForm: string;
   region: string;
+  originCity: string;
 };
 
 export type FoundCompany = {
@@ -135,7 +136,7 @@ export async function researchCompanies(criteria: ResearchCriteria) {
   const prompt = `Recherchiere bis zu 10 unterschiedliche, real existierende kleine oder mittelständische Unternehmen für die Akquisition der KI Masterclass.
 
 Suchkriterien:
-- Ausgangspunkt: Nürnberg
+- Ausgangspunkt: ${criteria.originCity}
 - maximaler Radius: ${criteria.radius} km
 - regionaler Schwerpunkt: ${criteria.region}
 - Branche: ${criteria.industry}
@@ -147,9 +148,10 @@ Qualitätsregeln:
 - Nenne nur Unternehmen, deren Existenz und Standort durch mindestens eine direkte URL belegt sind.
 - Erfinde keine Telefonnummern, E-Mail-Adressen, Geschäftsführungen, Mitarbeiterzahlen oder Anschriften. Nutze für unbelegte Textangaben eine leere Zeichenfolge und für die Mitarbeiterklasse "Unbekannt".
 - sourceUrls enthält ausschließlich direkte URLs, die du tatsächlich zur Prüfung verwendet hast.
-- distance ist die plausible Entfernung in Kilometern von Nürnberg und darf ${criteria.radius} nicht überschreiten.
+- distance ist die plausible Entfernung in Kilometern von ${criteria.originCity} und darf ${criteria.radius} nicht überschreiten.
 - Keine Konzerne, Behörden, Vereine, Schulen, dauerhaft geschlossenen Unternehmen oder Dubletten.
 - evidence fasst knapp zusammen, welche Angaben durch die Quellen belegt sind.
+- Kontaktweg: Bevorzuge Unternehmen mit öffentlich angegebener geschäftlicher E-Mail-Adresse (z. B. aus dem Impressum). Unternehmen ohne belegte E-Mail-Adresse darfst du ebenfalls liefern, aber NUR wenn die vollständige Postanschrift belegt ist (Straße mit Hausnummer, fünfstellige PLZ, Ort) – sie werden per Brief angeschrieben. Trage die Anschrift im Feld address vollständig in der Form "Straße Hausnummer, PLZ Ort" ein. Ohne belegte E-Mail UND ohne vollständige Postanschrift: nicht liefern. Das Feld email bleibt leer, wenn keine E-Mail-Adresse belegt ist.
 - Qualität geht vor Anzahl: Liefere weniger als 10 Treffer, wenn 10 Unternehmen nicht zuverlässig belegbar sind.`;
 
   let response: Response;

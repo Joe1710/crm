@@ -10,12 +10,15 @@ export async function POST(request: Request) {
 
   const form = await request.formData();
   const bio = String(form.get("bio") ?? "").trim();
+  const outreachReminder1 = String(form.get("outreach_reminder_1") ?? "").trim();
+  const outreachReminder2 = String(form.get("outreach_reminder_2") ?? "").trim();
+  const outreachConfirmation = String(form.get("outreach_confirmation") ?? "").trim();
   const styleInputs = [form.get("style_1"), form.get("style_2"), form.get("style_3")]
     .map(value => String(value ?? "").trim())
     .filter(Boolean);
 
   const db = getDb();
-  await db.update(users).set({ bio }).where(eq(users.id, sessionUser.id));
+  await db.update(users).set({ bio, outreachReminder1, outreachReminder2, outreachConfirmation }).where(eq(users.id, sessionUser.id));
   await db.delete(styleSamples).where(eq(styleSamples.userId, sessionUser.id));
   for (const content of styleInputs) {
     await db.insert(styleSamples).values({ userId: sessionUser.id, content });

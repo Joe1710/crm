@@ -1,0 +1,1 @@
+ALTER TABLE `companies` ADD `salutation` text DEFAULT '' NOT NULL;
