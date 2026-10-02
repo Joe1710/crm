@@ -57,6 +57,13 @@
       "when": 1789642349750,
       "tag": "0007_gifted_ender_wiggin",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1790240214572,
+      "tag": "0008_fat_ender_wiggin",
+      "breakpoints": true
     }
   ]
 }

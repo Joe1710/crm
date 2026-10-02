@@ -16,7 +16,7 @@ type Company = {
 
 type EventItem = { id: number; title: string; date: string; location: string; capacity: number; invited: number; confirmed: number; attended: number };
 type ResearchJob = { id: number; industry: string; radius: number; employees: string; legalForm: string; region: string; status: string };
-type SessionUser = { name: string; email: string };
+type SessionUser = { name: string; email: string; role: string };
 
 const ORIGIN_CITY_STORAGE_KEY = "ki-crm-origin-city";
 const ALL_CITIES = "Alle Städte";
@@ -235,7 +235,7 @@ export default function CrmApp({ user }: { user: SessionUser }) {
         {["Übersicht", "Unternehmen", "Sales Funnel", "Aufgaben", "Veranstaltungen"].map((item, i) => <button key={item} className={view === item ? "active" : ""} onClick={() => setView(item)}><span>{["⌂", "▦", "▽", "✓", "◇"][i]}</span>{item}{item === "Aufgaben" && <em>4</em>}</button>)}
       </nav>
       <div className="sidebar-foot"><div className={notionConfigured ? "sync-dot" : "sync-dot waiting"} /> <div><strong>{notionConfigured ? "CRM-Cloud aktiv" : "Notion vorbereitet"}</strong><small>{notionConfigured ? `${notionPending} Notion-Updates offen` : "Zugang noch schützen"}</small></div></div>
-      <div className="user"><span>{initials(user.name)}</span><div><strong>{user.name}</strong><small><a href="/change-password" className="user-link">Passwort ändern</a></small></div><form className="logout-form" method="POST" action="/api/auth/logout"><button type="submit" title="Abmelden">⏻</button></form></div>
+      <div className="user"><span>{initials(user.name)}</span><div><strong>{user.name}</strong><small><a href="/change-password" className="user-link">Passwort ändern</a>{user.role === "admin" && <> · <a href="/admin/users" className="user-link">Zugänge</a></>}</small></div><form className="logout-form" method="POST" action="/api/auth/logout"><button type="submit" title="Abmelden">⏻</button></form></div>
     </aside>
 
     <main>
