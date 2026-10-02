@@ -6,6 +6,8 @@ import { getSessionUser } from "../../../../lib/session-auth";
 
 type Company = typeof companies.$inferSelect;
 
+const MAX_PUSH_PER_RUN = 20;
+
 function isPendingPush(company: Company) {
   return !company.notionPageId || !company.notionLastEditedAt || company.updatedAt > company.notionLastEditedAt;
 }
@@ -27,7 +29,7 @@ export async function POST(request: Request) {
   const startedAt = new Date().toISOString();
   const [run] = await db.insert(notionSyncRuns).values({ status: "Läuft", startedAt }).returning();
 
-  let created = 0, pulled = 0, pushed = 0, failed = 0;
+  let created = 0, pulled = 0, pushed = 0, failed = 0, remaining = 0;
 
   try {
     if (body.companyId) {
@@ -86,9 +88,16 @@ export async function POST(request: Request) {
         byId.set(existing.id, { ...existing, updatedAt: record.notionLastEditedAt, notionLastEditedAt: record.notionLastEditedAt });
       }
 
+      // Cloudflare erlaubt pro Aufruf nur eine begrenzte Zahl externer Anfragen (Free: 50). Deshalb: Seiten-IDs aus der
+      // bereits geladenen Notion-Liste wiederverwenden (spart die Suchanfrage je Datensatz) und pro Lauf nur einen Teil
+      // senden -- der Rest bleibt "offen" und wird beim nächsten Klick übernommen.
+      const notionPageIdByCrmId = new Map(notionRecords.filter(r => r.crmId != null).map(r => [r.crmId as number, r.notionPageId]));
       const refreshed = await db.select().from(companies);
-      const pending = refreshed.filter(isPendingPush).slice(0, 50);
-      for (const company of pending) {
+      const allPending = refreshed.filter(isPendingPush);
+      const pending = allPending.slice(0, MAX_PUSH_PER_RUN);
+      remaining = allPending.length - pending.length;
+      for (const pendingCompany of pending) {
+        const company = pendingCompany.notionPageId ? pendingCompany : { ...pendingCompany, notionPageId: notionPageIdByCrmId.get(pendingCompany.id) ?? null };
         try {
           const result = await syncCompanyToNotion(company);
           await db.update(companies).set({ notionPageId: result.id, notionSyncedAt: new Date().toISOString(), notionLastEditedAt: result.lastEditedTime, notionSyncError: null }).where(eq(companies.id, company.id));
@@ -115,8 +124,9 @@ export async function POST(request: Request) {
     finishedAt
   }).where(eq(notionSyncRuns.id, run.id));
 
+  const more = remaining ? ` Noch ${remaining} offen – bitte erneut synchronisieren.` : "";
   return Response.json({
-    configured: true, created, pulled, pushed, failed,
-    message: failed ? `${succeeded} synchronisiert, ${failed} mit Fehlern.` : `${created} neu aus Notion, ${pulled} aktualisiert, ${pushed} nach Notion gesendet.`
+    configured: true, created, pulled, pushed, failed, remaining,
+    message: (failed ? `${succeeded} synchronisiert, ${failed} mit Fehlern.` : `${created} neu aus Notion, ${pulled} aktualisiert, ${pushed} nach Notion gesendet.`) + more
   });
 }
