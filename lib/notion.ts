@@ -59,7 +59,7 @@ function fromNotionPage(page: NotionPage): NotionCompanyRecord {
   return {
     notionPageId: page.id, notionLastEditedAt: page.last_edited_time, crmId: crmIdText ? Number(crmIdText) : null,
     name: readTitle(p["Unternehmen"]), city: readRichText(p["Ort"]), address: readRichText(p["Anschrift"]),
-    distance: readNumber(p["Entfernung zum Ausgangspunkt"]), industry: readSelect(p["Branche"]) || "Sonstige",
+    distance: readNumber(p[Object.keys(p).find(k => k.trim().toLowerCase().startsWith("entfernung")) ?? ""]), industry: readSelect(p["Branche"]) || "Sonstige",
     employees: readSelect(p["Mitarbeiterklasse"]), phone: readPhone(p["Telefon"]), email: readEmail(p["E-Mail"]),
     website: readUrl(p["Website"]), manager: readRichText(p["Geschäftsführung"]),
     stage: readSelect(p["Status"]) || "Neu gefunden", priority: readSelect(p["Priorität"]) || "B",
@@ -72,7 +72,19 @@ function safeIndustry(value: string) {
   return ["Maschinenbau", "IT-Dienstleistungen", "Medizintechnik", "Logistik", "Elektrotechnik", "Gebäudetechnik", "Sonstige"].includes(value) ? value : "Sonstige";
 }
 
-function properties(company: CompanyForNotion) {
+// Spaltenname der Entfernung variiert in Notion ("Entfernung zum Ausgangspunkt", "Entfernung Nürnberg", ...):
+// den echten Namen aus dem Schema lesen (kurz gecacht), statt einen festen Namen vorauszusetzen.
+let distanceProp: { name: string | null; at: number } | null = null;
+async function distancePropertyName(): Promise<string | null> {
+  if (distanceProp && Date.now() - distanceProp.at < 60_000) return distanceProp.name;
+  const { companiesDataSourceId } = config();
+  const schema = await notionRequest(`/data_sources/${companiesDataSourceId}`, { method: "GET" }) as NotionResponse & { properties?: Record<string, any> };
+  const name = Object.keys(schema.properties || {}).find(k => k.trim().toLowerCase().startsWith("entfernung")) ?? null;
+  distanceProp = { name, at: Date.now() };
+  return name;
+}
+
+function properties(company: CompanyForNotion, distanceName: string | null) {
   return {
     "Unternehmen": title(company.name),
     "CRM-Datensatz-ID": richText(String(company.id)),
@@ -82,7 +94,7 @@ function properties(company: CompanyForNotion) {
     "Mitarbeiterklasse": select(company.employees || "Unbekannt"),
     "Ort": richText(company.city),
     "Anschrift": richText(company.address),
-    "Entfernung zum Ausgangspunkt": { number: company.distance },
+    ...(distanceName ? { [distanceName]: { number: company.distance } } : {}),
     "Geschäftsführung": richText(company.manager),
     "Telefon": { phone_number: company.phone || null },
     "E-Mail": { email: company.email || null },
@@ -106,13 +118,14 @@ async function findExistingPage(companyId: number) {
 export async function syncCompanyToNotion(company: CompanyForNotion & { notionPageId?: string | null }) {
   const { companiesDataSourceId } = config();
   const existingId = company.notionPageId || await findExistingPage(company.id);
+  const distanceName = await distancePropertyName();
   if (existingId) {
-    const updated = await notionRequest(`/pages/${existingId}`, { method: "PATCH", body: JSON.stringify({ properties: properties(company) }) });
+    const updated = await notionRequest(`/pages/${existingId}`, { method: "PATCH", body: JSON.stringify({ properties: properties(company, distanceName) }) });
     return { id: existingId, lastEditedTime: updated.last_edited_time || new Date().toISOString() };
   }
   const created = await notionRequest("/pages", {
     method: "POST",
-    body: JSON.stringify({ parent: { type: "data_source_id", data_source_id: companiesDataSourceId }, properties: properties(company) })
+    body: JSON.stringify({ parent: { type: "data_source_id", data_source_id: companiesDataSourceId }, properties: properties(company, distanceName) })
   });
   if (!created.id) throw new Error("Notion hat keine Seiten-ID zurückgegeben.");
   return { id: created.id, lastEditedTime: created.last_edited_time || new Date().toISOString() };
