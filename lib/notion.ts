@@ -70,12 +70,14 @@ const title = (value: string) => ({ title: [{ type: "text", text: { content: val
 const select = (value: string) => ({ select: value ? { name: value } : null });
 const date = (value: string) => ({ date: value ? { start: value } : null });
 
-function safeIndustry(value: string) {
-  return ["Maschinenbau", "IT-Dienstleistungen", "Medizintechnik", "Logistik", "Elektrotechnik", "Gebäudetechnik", "Sonstige"].includes(value) ? value : "Sonstige";
+// Notion-Auswahlwerte dürfen keine Kommas enthalten und höchstens 100 Zeichen lang sein; neue Werte legt Notion selbst an.
+function industryForNotion(value: string) {
+  const cleaned = value.replace(/,/g, " ").replace(/\s{2,}/g, " ").trim().slice(0, 100);
+  return cleaned || "Sonstige";
 }
 
 function safeEmployees(value: string) {
-  const known = ["10–19", "20–49", "50–99", "100–249", "Unbekannt"];
+  const known = ["1–9", "10–19", "20–49", "50–99", "100–249", "Unbekannt"];
   const stripped = value.replace(/\s*Mitarbeiter$/, "").trim();
   return known.includes(stripped) ? stripped : "Unbekannt";
 }
@@ -86,7 +88,7 @@ function properties(company: CompanyForNotion): Record<string, unknown> {
     "CRM-Datensatz-ID": richText(String(company.id)),
     "Status": select(company.stage),
     "Priorität": select(company.priority),
-    "Branche": select(safeIndustry(company.industry)),
+    "Branche": select(industryForNotion(company.industry)),
     "Ausgangsstadt": richText(company.originCity ?? ""),
     "Mitarbeiterklasse": select(safeEmployees(company.employees)),
     "Ort": richText(company.city),

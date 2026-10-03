@@ -18,7 +18,7 @@ export function readSmtpConfig(env: Record<string, string | undefined>): SmtpCon
   return { host, port, user, password, fromEmail };
 }
 
-export async function sendSmtpMail(config: SmtpConfig, mail: { to: string; subject: string; body: string; html?: string }) {
+export async function sendSmtpMail(config: SmtpConfig, mail: { to: string; subject: string; body: string; html?: string; bcc?: string }) {
   const mailer = await WorkerMailer.connect({
     host: config.host,
     port: config.port,
@@ -32,6 +32,7 @@ export async function sendSmtpMail(config: SmtpConfig, mail: { to: string; subje
     await mailer.send({
       from: { email: config.fromEmail },
       to: mail.to,
+      ...(mail.bcc ? { bcc: mail.bcc } : {}),
       subject: mail.subject,
       text: mail.body,
       ...(mail.html ? { html: mail.html } : {})

@@ -57,7 +57,7 @@ const companySchema = {
           address: { type: "string" },
           distance: { type: "number" },
           industry: { type: "string" },
-          employees: { type: "string", enum: ["10–19", "20–49", "50–99", "100–249", "Unbekannt"] },
+          employees: { type: "string", enum: ["1–9", "10–19", "20–49", "50–99", "100–249", "Unbekannt"] },
           phone: { type: "string" },
           email: { type: "string" },
           website: { type: "string" },

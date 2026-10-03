@@ -3,7 +3,7 @@
 
 export const ANMELDUNG_URL = "https://ki-masterclass.com/ki-speed-date/";
 
-const EVENT = {
+export const EVENT = {
   dateLine: "Mittwoch, 11. November 2026 · 18:00–21:00 Uhr",
   pill: "Mittwoch, 11. November 2026 · Kainsbacher Mühle, Happurg",
   cardDate: "Mi., 11.11.2026<br>18:00–21:00 Uhr",
@@ -29,7 +29,7 @@ export type Template = {
 
 export const OUTREACH_TEMPLATES: Record<1 | 2 | 3 | 4, Template> = {
   1: {
-    subject: "Ihre größte Herausforderung im Betrieb? Bringen Sie sie zum KI-Mittelstandsabend mit",
+    subject: "Ihre größte Herausforderung im Betrieb? Bringen Sie diese zum KI-Mittelstandsabend mit",
     eyebrow: "Einladung · Speed-Dating KI-Mittelstand · Region Nürnberg",
     headline: "Bringen Sie Ihre größte Herausforderung mit.",
     paragraphs: [
