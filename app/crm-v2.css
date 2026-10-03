@@ -283,3 +283,12 @@
 .postal-row small { display: block; color: #8a92a2; font-size: 10px; margin-top: 3px; }
 .postal-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
 .postal-foot .form-actions { margin: 0; flex-wrap: wrap; justify-content: flex-end; }
+
+/* Firmendetail: bearbeitbare Kontaktfelder, Fehler-Toast */
+.drawer-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px; }
+.drawer-fields .field { display: grid; gap: 6px; }
+.drawer-fields .field input { border: 1px solid #dfe2e8; border-radius: 6px; padding: 9px 10px; font-size: 13px; width: 100%; outline: none; background: #fff; }
+.drawer-fields .field input:focus { border-color: #2f63d8; }
+.drawer-fields .span2 { grid-column: span 2; }
+.drawer-fields .static-value { padding: 9px 0; font-size: 13px; font-weight: 500; }
+.v2 .toast.error { background: #7a2418; }

@@ -127,7 +127,8 @@ export default function CrmApp({ user }: { user: SessionUser }) {
   const firstName = user.name.split(" ")[0];
   const selected = companies.find(c => c.id === selectedId) ?? null;
 
-  function flash(message: string, ms = 3200) { setNotice(message); setTimeout(() => setNotice(""), ms); }
+  const [noticeError, setNoticeError] = useState(false);
+  function flash(message: string, ms = 3200, isError = false) { setNotice(message); setNoticeError(isError); setTimeout(() => setNotice(""), ms); }
   function patchLocal(company: Company) { setCompanies(old => old.map(c => c.id === company.id ? { ...c, ...company } : c)); }
   function refreshSyncStatus() {
     api("/api/sync/notion").then(r => r.ok ? r.json() : Promise.reject()).then(d => {
@@ -250,16 +251,17 @@ export default function CrmApp({ user }: { user: SessionUser }) {
       if (selectedId === company.id) loadHistory(company.id);
       syncOne(company.id);
       flash(`${company.name}: Status „${stage}“`);
-    } catch (error) { patchLocal(company); flash(error instanceof Error ? error.message : "Status konnte nicht gespeichert werden"); }
+    } catch (error) { patchLocal(company); flash(error instanceof Error ? error.message : "Status konnte nicht gespeichert werden", 6000, true); }
   }
 
-  async function patchCompany(company: Company, patch: Partial<Pick<Company, "salutation" | "notes" | "originCity">>, message: string) {
+  async function patchCompany(company: Company, patch: Partial<Pick<Company, "salutation" | "notes" | "originCity" | "manager" | "phone" | "email" | "website" | "address">>, message: string) {
     patchLocal({ ...company, ...patch });
     try {
       const r = await api(`/api/companies/${company.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
-      const d = await r.json() as { company?: Company };
+      const d = await r.json() as { company?: Company; error?: string };
       if (r.ok && d.company) { patchLocal(d.company); syncOne(company.id); flash(message, 2200); }
-    } catch { flash("Speichern fehlgeschlagen"); }
+      else { patchLocal(company); flash(d.error || "Speichern fehlgeschlagen", 6000, true); }
+    } catch { patchLocal(company); flash("Speichern fehlgeschlagen", 6000, true); }
   }
 
   async function sendEmail(company: Company, step: number) {
@@ -272,7 +274,7 @@ export default function CrmApp({ user }: { user: SessionUser }) {
       if (selectedId === company.id) loadHistory(company.id);
       syncOne(company.id);
       flash(`${step === 4 ? "Zusage-E-Mail" : `E-Mail ${step}`} gesendet an ${d.sentTo}${d.testMode ? " (Testmodus)" : ""}`, 4500);
-    } catch (error) { flash(error instanceof Error ? error.message : "Versand fehlgeschlagen", 5000); }
+    } catch (error) { flash(error instanceof Error ? error.message : "Versand fehlgeschlagen", 5000, true); }
     finally { setSendingStep(null); }
   }
 
@@ -286,7 +288,7 @@ export default function CrmApp({ user }: { user: SessionUser }) {
       (d.companies ?? []).forEach(patchLocal);
       if (action === "sent") { (d.companies ?? []).forEach(c => syncOne(c.id)); if (selectedId) loadHistory(selectedId); }
       if (message) flash(message, 4500);
-    } catch (error) { flash(error instanceof Error ? error.message : "Speichern fehlgeschlagen", 5000); }
+    } catch (error) { flash(error instanceof Error ? error.message : "Speichern fehlgeschlagen", 5000, true); }
     finally { setPostalBusy(false); setConfirmPostalSent(false); }
   }
 
@@ -304,7 +306,7 @@ export default function CrmApp({ user }: { user: SessionUser }) {
       setActivityNote(""); setActivityResult("");
       loadHistory(company.id); syncOne(company.id);
       flash("Aktivität eingetragen");
-    } catch (error) { flash(error instanceof Error ? error.message : "Speichern fehlgeschlagen"); }
+    } catch (error) { flash(error instanceof Error ? error.message : "Speichern fehlgeschlagen", 6000, true); }
     finally { setSavingActivity(false); }
   }
 
@@ -315,7 +317,7 @@ export default function CrmApp({ user }: { user: SessionUser }) {
       const d = await r.json() as ConfirmationDraft & { message?: string };
       if (!r.ok) throw new Error(d.message || "Entwurf konnte nicht geladen werden");
       setConfirmation({ subject: d.subject, body: d.body });
-    } catch (error) { flash(error instanceof Error ? error.message : "Entwurf konnte nicht geladen werden"); }
+    } catch (error) { flash(error instanceof Error ? error.message : "Entwurf konnte nicht geladen werden", 6000, true); }
     finally { setConfirmationBusy(false); }
   }
 
@@ -328,7 +330,7 @@ export default function CrmApp({ user }: { user: SessionUser }) {
       if (!r.ok) throw new Error(d.message || "Versand fehlgeschlagen");
       setConfirmation(null); loadHistory(company.id);
       flash(`Bestätigung gesendet an ${d.sentTo}`, 4500);
-    } catch (error) { flash(error instanceof Error ? error.message : "Versand fehlgeschlagen"); }
+    } catch (error) { flash(error instanceof Error ? error.message : "Versand fehlgeschlagen", 6000, true); }
     finally { setConfirmationBusy(false); }
   }
 
@@ -344,7 +346,7 @@ export default function CrmApp({ user }: { user: SessionUser }) {
       setCompanies(old => [created, ...old]); setShowAdd(false);
       syncOne(created.id);
       flash("Unternehmen wurde angelegt");
-    } catch (error) { flash(error instanceof Error ? error.message : "Speichern fehlgeschlagen"); }
+    } catch (error) { flash(error instanceof Error ? error.message : "Speichern fehlgeschlagen", 6000, true); }
   }
 
   async function syncNotion() {
@@ -363,7 +365,7 @@ export default function CrmApp({ user }: { user: SessionUser }) {
         if (!result.pending || (!result.succeeded && !result.failed)) break;
       }
       flash(failedTotal ? `Notion: ${total} übertragen, ${failedTotal} mit Fehlern. ${lastMessage}` : `Notion: ${total} Unternehmen übertragen – alles synchron.`, 7000);
-    } catch (error) { flash(error instanceof Error ? error.message : "Notion-Synchronisation fehlgeschlagen", 7000); }
+    } catch (error) { flash(error instanceof Error ? error.message : "Notion-Synchronisation fehlgeschlagen", 7000, true); }
     finally { setNotionSyncing(false); refreshSyncStatus(); }
   }
 
@@ -387,7 +389,7 @@ export default function CrmApp({ user }: { user: SessionUser }) {
       if (isValidOriginCity(criteria.originCity)) setOriginCity(criteria.originCity);
       setShowResearch(false);
       flash(serverMessage || (found.length ? `${found.length} neue Unternehmen wurden gespeichert` : "Keine neuen Unternehmen gefunden"), 6000);
-    } catch (error) { flash(error instanceof Error ? error.message : "Recherche konnte nicht gestartet werden", 5000); }
+    } catch (error) { flash(error instanceof Error ? error.message : "Recherche konnte nicht gestartet werden", 5000, true); }
     finally { setResearching(false); }
   }
 
@@ -413,7 +415,7 @@ export default function CrmApp({ user }: { user: SessionUser }) {
       setEvents(list => old ? list.map(ev => ev.id === saved.id ? saved : ev) : [saved, ...list]);
       setShowEventForm(null);
       flash(old ? "Veranstaltung wurde aktualisiert" : "Veranstaltung wurde angelegt");
-    } catch (error) { flash(error instanceof Error ? error.message : "Speichern fehlgeschlagen"); }
+    } catch (error) { flash(error instanceof Error ? error.message : "Speichern fehlgeschlagen", 6000, true); }
     finally { setSavingEvent(false); }
   }
 
@@ -430,7 +432,7 @@ export default function CrmApp({ user }: { user: SessionUser }) {
       const refreshed = await api("/api/masterclass-sessions").then(r => r.json());
       setMasterclassSessions(Array.isArray(refreshed.sessions) ? refreshed.sessions : []);
       flash(`${result.imported ?? 0} Termine für Kohorte „${result.cohort}“ importiert`);
-    } catch (error) { flash(error instanceof Error ? error.message : "Import fehlgeschlagen"); }
+    } catch (error) { flash(error instanceof Error ? error.message : "Import fehlgeschlagen", 6000, true); }
     finally { setImportingSessions(false); }
   }
 
@@ -450,6 +452,13 @@ export default function CrmApp({ user }: { user: SessionUser }) {
         <option value={ALL_CITIES}>{ALL_CITIES}</option>
         {GERMAN_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
       </select>
+    </label>
+  );
+
+  const contactInput = (company: Company, field: "manager" | "phone" | "email" | "website" | "address", label: string, type = "text", wide = false) => (
+    <label className={`field${wide ? " span2" : ""}`}><span>{label}</span>
+      <input key={`${field}-${company.id}-${company[field] ?? ""}`} type={type} defaultValue={company[field] ?? ""}
+        onBlur={e => { const v = e.target.value.trim(); if (v !== (company[field] ?? "")) patchCompany(company, { [field]: v }, `${label} gespeichert`); }}/>
     </label>
   );
 
@@ -568,13 +577,15 @@ export default function CrmApp({ user }: { user: SessionUser }) {
         <div className="drawer-col">
           <section className="drawer-section">
             <h3>Unternehmen & Ansprechpartner</h3>
-            <div className="detail-grid">
-              <div><small>ANSPRECHPARTNER</small><strong>{selected.manager || "–"}</strong></div>
-              <div><small>GRÖSSE</small><strong>{selected.employees || "–"}</strong></div>
-              <div><small>TELEFON</small>{selected.phone ? <a href={`tel:${selected.phone}`}>{selected.phone}</a> : <strong>–</strong>}</div>
-              <div><small>E-MAIL</small>{selected.email ? <a href={`mailto:${selected.email}`}>{selected.email}</a> : <strong>–</strong>}</div>
-              <div className="span2"><small>WEBSITE</small>{selected.website ? <a href={selected.website.startsWith("http") ? selected.website : `https://${selected.website}`} target="_blank" rel="noreferrer">{selected.website}</a> : <strong>–</strong>}</div>
+            <div className="drawer-fields">
+              {contactInput(selected, "manager", "Ansprechpartner")}
+              <div className="field"><span>Größe</span><strong className="static-value">{selected.employees || "–"}</strong></div>
+              {contactInput(selected, "phone", "Telefon", "tel")}
+              {contactInput(selected, "email", "E-Mail", "email")}
+              {contactInput(selected, "address", "Adresse (Straße Nr., PLZ Ort)", "text", true)}
+              {contactInput(selected, "website", "Website", "text", true)}
             </div>
+            <p className="muted-note">Änderungen werden beim Verlassen des Feldes gespeichert. Für den Briefversand braucht die Adresse Straße mit Hausnummer und PLZ, bei E-Mail-Versand eine gültige E-Mail-Adresse.</p>
             <label className="field"><span>Anrede in den E-Mails (z. B. „Herr Drösel“, „Frau Michels“)</span><input key={`sal-${selected.id}`} defaultValue={selected.salutation} placeholder="Herr/Frau Nachname – leer = „Guten Tag,“" onBlur={e => { const v = e.target.value.trim(); if (v !== selected.salutation) patchCompany(selected, { salutation: v }, "Anrede gespeichert"); }}/></label>
           </section>
 
@@ -675,7 +686,7 @@ export default function CrmApp({ user }: { user: SessionUser }) {
       </div>
     </div></div>}
 
-    {notice && <div className="toast">✓ {notice}</div>}
+    {notice && <div className={`toast${noticeError ? " error" : ""}`}>{noticeError ? "⚠" : "✓"} {notice}</div>}
   </div>;
 }
 

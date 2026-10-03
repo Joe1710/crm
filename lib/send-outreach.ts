@@ -4,6 +4,7 @@ import { getDb } from "../db";
 import { companies, outreachEmails } from "../db/schema";
 import { stageAfterEmail } from "./crm-stages";
 import { outreachSubject, renderOutreachHtml, renderOutreachText, renderPlainHtml } from "./outreach-html";
+import { domainAcceptsMail, emailDomain } from "./mail-check";
 import { readSmtpConfig, sendSmtpMail } from "./smtp";
 
 export class SendOutreachError extends Error {
@@ -22,6 +23,15 @@ function resolveRecipient(companyEmail: string): { to: string; testNote: string 
   const recipients = (runtime.OUTREACH_TEST_RECIPIENTS ?? "").split(",").map(value => value.trim()).filter(Boolean);
   const to = recipients[0] ?? companyEmail;
   return { to, testNote: `TESTMODUS – eigentlicher Empfänger wäre: ${companyEmail}`, bcc: undefined };
+}
+
+/** Verhindert den Versand an Adressen, deren Domain keinen Mailserver hat (typisch: von der KI falsch geratene Endung). */
+async function assertDeliverable(company: { email: string; website: string }, testMode: boolean) {
+  if (testMode) return;
+  const domain = emailDomain(company.email);
+  if (await domainAcceptsMail(domain)) return;
+  const site = company.website.trim().replace(/^https?:\/\//i, "").replace(/^www\./i, "").split("/")[0];
+  throw new SendOutreachError(`Die Domain „${domain}“ hat keinen Mailserver – die Adresse ${company.email.trim()} ist vermutlich falsch.${site && site !== domain ? ` Die Website der Firma ist ${site}. Bitte die E-Mail-Adresse im Firmendetail prüfen und korrigieren.` : " Bitte die E-Mail-Adresse im Firmendetail prüfen und korrigieren."}`, 422);
 }
 
 async function loadCompany(companyId: number) {
@@ -44,6 +54,7 @@ export async function sendOutreachEmail(params: { companyId: number; step: numbe
   const subject = outreachSubject(step);
   const body = renderOutreachText(step, company.salutation);
   const { to, testNote, bcc } = resolveRecipient(company.email.trim());
+  await assertDeliverable(company, Boolean(testNote));
   const text = testNote ? `[${testNote}]\n\n${body}` : body;
   const html = renderOutreachHtml(step, company.salutation, testNote);
 
@@ -74,6 +85,7 @@ export async function sendOutreachEmail(params: { companyId: number; step: numbe
 export async function sendConfirmationEmail(params: { companyId: number; subject: string; body: string }) {
   const { db, company, smtpConfig } = await loadCompany(params.companyId);
   const { to, testNote, bcc } = resolveRecipient(company.email.trim());
+  await assertDeliverable(company, Boolean(testNote));
   const text = testNote ? `[${testNote}]\n\n${params.body}` : params.body;
   await sendSmtpMail(smtpConfig, { to, bcc, subject: params.subject, body: text, html: renderPlainHtml(params.body, testNote) });
 

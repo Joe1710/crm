@@ -4,6 +4,7 @@ import { companies, researchJobs } from "../../../db/schema";
 import { notionConfigured, syncCompanyToNotion } from "../../../lib/notion";
 import { ResearchApiError, researchCompanies, researchConfigured } from "../../../lib/openai-research";
 import { DEFAULT_ORIGIN_CITY, isValidOriginCity } from "../../../lib/german-cities";
+import { domainAcceptsMail, emailDomain } from "../../../lib/mail-check";
 import { hasCompletePostalAddress, hasValidEmail } from "../../../lib/postal";
 import { getSessionUser } from "../../../lib/session-auth";
 
@@ -52,7 +53,8 @@ export async function POST(request: Request) {
     let letterOnly = 0;
     for (const candidate of found) {
       // Kontaktweg: E-Mail ODER vollständige Postanschrift (Brief). Ohne beides kann nicht eingeladen werden.
-      const hasEmail = hasValidEmail(candidate.email);
+      // Adressen, deren Domain keinen Mailserver hat (von der KI falsch geraten), zählen als „keine E-Mail“.
+      const hasEmail = hasValidEmail(candidate.email) && await domainAcceptsMail(emailDomain(candidate.email));
       if (!hasEmail && !hasCompletePostalAddress(candidate.address)) { skippedWithoutContact++; continue; }
       const normalizedName = candidate.name.trim().toLocaleLowerCase("de");
       const normalizedWebsite = candidate.website.trim().toLocaleLowerCase("de").replace(/\/$/, "");

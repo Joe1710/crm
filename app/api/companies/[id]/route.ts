@@ -3,9 +3,10 @@ import { getDb } from "../../../../db";
 import { activities, companies } from "../../../../db/schema";
 import { isStage } from "../../../../lib/crm-stages";
 import { isValidOriginCity } from "../../../../lib/german-cities";
+import { hasValidEmail } from "../../../../lib/postal";
 import { getSessionUser } from "../../../../lib/session-auth";
 
-type PatchBody = { stage?: string; salutation?: string; notes?: string; originCity?: string };
+type PatchBody = { stage?: string; salutation?: string; notes?: string; originCity?: string; email?: string; address?: string; phone?: string; website?: string; manager?: string };
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser();
@@ -27,6 +28,15 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     if (body.salutation !== undefined) update.salutation = body.salutation.trim();
     if (body.notes !== undefined) update.notes = body.notes;
     if (body.originCity !== undefined && isValidOriginCity(body.originCity)) update.originCity = body.originCity;
+    if (body.email !== undefined) {
+      const email = body.email.trim().toLowerCase();
+      if (email && !hasValidEmail(email)) return Response.json({ error: "Die E-Mail-Adresse ist ungültig." }, { status: 400 });
+      update.email = email;
+    }
+    if (body.address !== undefined) update.address = body.address.trim();
+    if (body.phone !== undefined) update.phone = body.phone.trim();
+    if (body.manager !== undefined) update.manager = body.manager.trim();
+    if (body.website !== undefined) update.website = body.website.trim();
     if (Object.keys(update).length <= 2) return Response.json({ error: "Keine Änderung übergeben" }, { status: 400 });
 
     const [company] = await db.update(companies).set(update).where(eq(companies.id, Number(id))).returning();
