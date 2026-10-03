@@ -46,6 +46,7 @@ type TimelineItem = { key: string; date: string; time: string; label: string; de
 const OTHER_INDUSTRY = "__andere__";
 const ORIGIN_CITY_STORAGE_KEY = "ki-crm-origin-city";
 const ALL_CITIES = "Alle Städte";
+const ALL_DISTANCES = 100000;
 const NAV = [
   { key: "Übersicht", icon: "⌂" }, { key: "Unternehmen", icon: "▦" }, { key: "Sales Funnel", icon: "▽" },
   { key: "Aufgaben", icon: "✓" }, { key: "Veranstaltungen", icon: "◇" }, { key: "Terminmanagement", icon: "◷" }
@@ -80,6 +81,7 @@ const json = (body: unknown): RequestInit => ({ method: "POST", headers: { "Cont
 export default function CrmApp({ user }: { user: SessionUser }) {
   const [view, setView] = useState("Übersicht");
   const [radius, setRadius] = useState(50);
+  const [listRadius, setListRadius] = useState(ALL_DISTANCES);
   const [originCity, setOriginCity] = useState<string>(DEFAULT_ORIGIN_CITY);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -168,19 +170,20 @@ export default function CrmApp({ user }: { user: SessionUser }) {
     return Array.from(new Set(companies.map(c => c.industry.trim()).filter(i => i && i !== "Sonstige" && !fixed.has(i.toLocaleLowerCase("de"))))).sort((a, b) => a.localeCompare(b, "de"));
   }, [companies]);
   const industries = useMemo(() => ["Alle Branchen", ...Array.from(new Set(companies.map(c => c.industry)))], [companies]);
-  const filtered = withinRadius.filter(c =>
-    (industry === "Alle Branchen" || c.industry === industry) &&
-    (stageFilter === "Alle Stufen" || c.stage === stageFilter) &&
-    `${c.name} ${c.city} ${c.manager}`.toLowerCase().includes(query.toLowerCase()));
-  const countBy = (stage: string) => withinRadius.filter(c => c.stage === stage).length;
-  const inProgress = withinRadius.filter(c => ["1. Kontakt", "2. Kontakt", "3. Kontakt"].includes(c.stage)).length;
+  // Die Suche ignoriert Stadt, Entfernung und Filter: ein Treffer darf nie an solchen Randbedingungen scheitern.
+  const searching = query.trim().length > 0;
+  const filtered = (searching ? companies : inCity.filter(c => c.distance <= listRadius)).filter(c =>
+    (searching || ((industry === "Alle Branchen" || c.industry === industry) && (stageFilter === "Alle Stufen" || c.stage === stageFilter))) &&
+    `${c.name} ${c.city} ${c.manager} ${c.email}`.toLowerCase().includes(query.trim().toLowerCase()));
+  const countBy = (stage: string) => inCity.filter(c => c.stage === stage).length;
+  const inProgress = inCity.filter(c => ["1. Kontakt", "2. Kontakt", "3. Kontakt"].includes(c.stage)).length;
   const confirmedCount = countBy("Zugesagt");
   const registeredCount = signups.length;
   const lostCount = countBy("Verloren");
   const tasks = useMemo(() => sortTasks(inCity.filter(c => isTask(c))), [inCity]);
-  const postalOpen = useMemo(() => withinRadius.filter(c => c.postalStatus !== POSTAL_STATUS.sent && (isPostalCandidate(c) || c.postalStatus === POSTAL_STATUS.marked)), [withinRadius]);
+  const postalOpen = useMemo(() => inCity.filter(c => c.postalStatus !== POSTAL_STATUS.sent && (isPostalCandidate(c) || c.postalStatus === POSTAL_STATUS.marked)), [inCity]);
   const postalMarked = postalOpen.filter(c => c.postalStatus === POSTAL_STATUS.marked);
-  const postalSentCount = withinRadius.filter(c => c.postalStatus === POSTAL_STATUS.sent).length;
+  const postalSentCount = inCity.filter(c => c.postalStatus === POSTAL_STATUS.sent).length;
   const cityLabel = originCity === ALL_CITIES ? "alle Städte" : originCity;
   const mapCity = (originCity === ALL_CITIES ? DEFAULT_ORIGIN_CITY : originCity).toUpperCase();
 
@@ -483,14 +486,14 @@ export default function CrmApp({ user }: { user: SessionUser }) {
           </div>
           <div className="kpis">
             <article><span className="kpi-icon blue">◎</span><div><small>MARKTPOTENZIAL</small><strong>{withinRadius.length * 137}</strong><p>geschätzte KMU im Gebiet</p><button className="kpi-link" onClick={() => setShowResearch(true)}>✦ 10 neue finden</button></div></article>
-            <article><span className="kpi-icon green">▣</span><div><small>IN DATENBANK</small><strong>{withinRadius.length}</strong><p>{countBy("Neu")} davon neu</p></div></article>
+            <article><span className="kpi-icon green">▣</span><div><small>IN DATENBANK</small><strong>{inCity.length}</strong><p>{countBy("Neu")} davon neu</p></div></article>
             <article><span className="kpi-icon amber">◫</span><div><small>IN BEARBEITUNG</small><strong>{inProgress}</strong><p>1. bis 3. Kontakt</p></div></article>
             <article><span className="kpi-icon violet">◆</span><div><small>ZUSAGEN</small><strong>{confirmedCount}</strong><p>{registeredCount} verbindlich angemeldet · {lostCount} verloren</p></div></article>
           </div>
           <div className="overview-grid">
             <article className="panel funnel-panel"><div className="panel-head"><div><h2>Akquise-Funnel</h2><p>Unternehmen je Stufe im Marktgebiet – Zeile anklicken für die Liste</p></div><button onClick={() => setView("Sales Funnel")}>Zum Sales Funnel →</button></div>
               <div className="funnel-chart">
-                {STAGES.map(stage => { const n = countBy(stage); return <button key={stage} className="funnel-row" onClick={() => { setStageFilter(stage); setView("Unternehmen"); }}><span>{stage}</span><div><i className={stage === "Verloren" ? "lost" : stage === "Zugesagt" ? "won" : ""} style={{ width: `${Math.max(3, (n / Math.max(1, withinRadius.length)) * 100)}%` }} /></div><strong>{n}</strong></button>; })}
+                {STAGES.map(stage => { const n = countBy(stage); return <button key={stage} className="funnel-row" onClick={() => { setStageFilter(stage); setView("Unternehmen"); }}><span>{stage}</span><div><i className={stage === "Verloren" ? "lost" : stage === "Zugesagt" ? "won" : ""} style={{ width: `${Math.max(3, (n / Math.max(1, inCity.length)) * 100)}%` }} /></div><strong>{n}</strong></button>; })}
               </div>
               <div className="funnel-note"><span>✓</span><p><strong>{tasks.length} offene Aufgaben</strong><br/>Kontakte, die seit {TASK_AFTER_DAYS} Tagen nicht weitergeführt wurden, und positive Rückmeldungen. <button className="text-link" onClick={() => setView("Aufgaben")}>Jetzt abarbeiten →</button></p></div>
             </article>
@@ -499,14 +502,14 @@ export default function CrmApp({ user }: { user: SessionUser }) {
         </>}
 
         {view === "Unternehmen" && <>
-          <div className="page-head"><div><p className="eyebrow">MARKTDATENBANK · {cityLabel.toUpperCase()}</p><h1>Unternehmen</h1><p>{filtered.length} Unternehmen im Radius von {radius} km.</p></div><div className="head-actions"><button className="secondary postal-btn" onClick={() => setShowPostal(true)}>✉ Postalische Aussendung{postalOpen.length > 0 && <em>{postalOpen.length}</em>}</button><button className="secondary" onClick={exportCsv}>↓ CSV exportieren</button><button className="primary" onClick={() => setShowAdd(true)}>＋ Unternehmen hinzufügen</button></div></div>
-          <div className="toolbar"><label className="search">⌕<input placeholder="Unternehmen, Ort oder Ansprechpartner suchen" value={query} onChange={e => setQuery(e.target.value)}/></label><select value={stageFilter} onChange={e => setStageFilter(e.target.value)}><option>Alle Stufen</option>{STAGES.map(s => <option key={s}>{s}</option>)}</select><select value={industry} onChange={e => setIndustry(e.target.value)}>{industries.map(i => <option key={i}>{i}</option>)}</select><select value={radius} onChange={e => setRadius(Number(e.target.value))}>{[10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(r => <option key={r} value={r}>{r} km Umkreis</option>)}</select></div>
+          <div className="page-head"><div><p className="eyebrow">MARKTDATENBANK · {cityLabel.toUpperCase()}</p><h1>Unternehmen</h1><p>{filtered.length} Unternehmen{searching ? " – Suche über alle Städte und Entfernungen" : listRadius === ALL_DISTANCES ? " – alle Entfernungen" : ` im Umkreis von ${listRadius} km`}.</p></div><div className="head-actions"><button className="secondary postal-btn" onClick={() => setShowPostal(true)}>✉ Postalische Aussendung{postalOpen.length > 0 && <em>{postalOpen.length}</em>}</button><button className="secondary" onClick={exportCsv}>↓ CSV exportieren</button><button className="primary" onClick={() => setShowAdd(true)}>＋ Unternehmen hinzufügen</button></div></div>
+          <div className="toolbar"><label className="search">⌕<input placeholder="Unternehmen, Ort, Ansprechpartner oder E-Mail suchen (findet immer alle)" value={query} onChange={e => setQuery(e.target.value)}/></label><select value={stageFilter} onChange={e => setStageFilter(e.target.value)}><option>Alle Stufen</option>{STAGES.map(s => <option key={s}>{s}</option>)}</select><select value={industry} onChange={e => setIndustry(e.target.value)}>{industries.map(i => <option key={i}>{i}</option>)}</select><select value={listRadius} onChange={e => setListRadius(Number(e.target.value))}><option value={ALL_DISTANCES}>Alle Entfernungen</option>{[10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(r => <option key={r} value={r}>bis {r} km</option>)}</select></div>
           <article className="panel full-table"><CompanyTable companies={filtered} onSelect={openCompany}/></article>
         </>}
 
         {view === "Sales Funnel" && <>
           <div className="page-head"><div><p className="eyebrow">AKQUISITION · {cityLabel.toUpperCase()}</p><h1>Sales Funnel</h1><p>Neu → 1. bis 3. Kontakt → Zugesagt oder Verloren. Von jeder Kontaktstufe ist „Zugesagt“ möglich.</p></div><button className="secondary" onClick={exportCsv}>↓ Bericht exportieren</button></div>
-          <div className="kanban">{STAGES.map(stage => { const cards = withinRadius.filter(c => c.stage === stage); return <section key={stage} className={stage === "Zugesagt" ? "won" : stage === "Verloren" ? "lost" : ""}><header><span>{stage}</span><b>{cards.length}</b></header>{cards.map(c => <button className="kanban-card" key={c.id} onClick={() => openCompany(c)}>{c.lastResult && <span className={`result-chip r-${c.lastResult}`}>{RESULT_LABEL[c.lastResult]}</span>}<strong>{c.name}</strong><small>{c.city} · {c.industry}</small><time>seit {daysSince(lastTouch(c))} Tagen</time></button>)}{cards.length === 0 && <div className="empty-stage">Keine Unternehmen</div>}</section>; })}</div>
+          <div className="kanban">{STAGES.map(stage => { const cards = inCity.filter(c => c.stage === stage); return <section key={stage} className={stage === "Zugesagt" ? "won" : stage === "Verloren" ? "lost" : ""}><header><span>{stage}</span><b>{cards.length}</b></header>{cards.map(c => <button className="kanban-card" key={c.id} onClick={() => openCompany(c)}>{c.lastResult && <span className={`result-chip r-${c.lastResult}`}>{RESULT_LABEL[c.lastResult]}</span>}<strong>{c.name}</strong><small>{c.city} · {c.industry}</small><time>seit {daysSince(lastTouch(c))} Tagen</time></button>)}{cards.length === 0 && <div className="empty-stage">Keine Unternehmen</div>}</section>; })}</div>
         </>}
 
         {view === "Aufgaben" && <>
